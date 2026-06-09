@@ -1,0 +1,52 @@
+#######################################
+# Syntax Coloring Map For APIOTA
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+APIOTAClient	KEYWORD1
+APIOTAUpdateInfo	KEYWORD1
+APIOTAState	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+begin	KEYWORD2
+tick	KEYWORD2
+autoProvision	KEYWORD2
+checkUpdate	KEYWORD2
+updateFirmware	KEYWORD2
+ackCommand	KEYWORD2
+forceCheck	KEYWORD2
+isProvisioned	KEYWORD2
+getDeviceId	KEYWORD2
+getDeviceSecret	KEYWORD2
+getState	KEYWORD2
+setServer	KEYWORD2
+setPublicKey	KEYWORD2
+setDeviceId	KEYWORD2
+setDeviceName	KEYWORD2
+setCheckInterval	KEYWORD2
+setPollInterval	KEYWORD2
+enableAutoCheck	KEYWORD2
+onCommand	KEYWORD2
+onProgress	KEYWORD2
+onProvisioned	KEYWORD2
+onError	KEYWORD2
+timeTick	KEYWORD2
+log	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+APST_IDLE	LITERAL1
+APST_PROVISIONING	LITERAL1
+APST_CHECKING	LITERAL1
+APST_DOWNLOADING	LITERAL1
+APST_VERIFYING	LITERAL1
+APST_FLASHING	LITERAL1
+APST_SUCCESS	LITERAL1
+APST_FAILED	LITERAL1
+APST_ROLLBACK	LITERAL1
+APIOTA_DEFAULT_SERVER	LITERAL1
