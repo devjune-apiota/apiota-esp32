@@ -1,10 +1,10 @@
 /*
   ================================================================
    LILYGO_TDisplayS3 — APIOTA Library Example
-   สำหรับ: LILYGO T-Display-S3 (ST7789, 320×170, ESP32-S3)
+   For: LILYGO T-Display-S3 (ST7789, 320×170, ESP32-S3)
    ================================================================
 
-   TFT_eSPI User_Setup.h ต้องตั้งค่า:
+   TFT_eSPI User_Setup.h must be configured:
      #define ST7789_DRIVER
      #define TFT_WIDTH  170    #define TFT_HEIGHT 320
      #define TFT_MOSI 11       #define TFT_SCLK 12
@@ -13,10 +13,10 @@
      #define SPI_FREQUENCY 40000000
 
    Buttons:
-     BTN1 (GPIO14) short  = เปลี่ยน Theme
-     BTN1 (GPIO14) hold 5s = เปิด WiFi Manager
+     BTN1 (GPIO14) short  = change Theme
+     BTN1 (GPIO14) hold 5s = open WiFi Manager
      BTN2 (GPIO0)  short  = Force OTA check
-     BTN1+BTN2 hold 5s    = ลบ WiFi ทั้งหมด + restart
+     BTN1+BTN2 hold 5s    = erase all WiFi + restart
 
    Dependencies:
      - APIOTA library  |  TFT_eSPI  |  WiFiManager (tzapu)
@@ -26,7 +26,7 @@
 // ── INCLUDES ─────────────────────────────────────────────────────
 #include <FS.h>
 using fs::FS;
-#include "display_types.h"   // ต้อง include ก่อน (OTAStatus, Theme, etc.)
+#include "display_types.h"   // must be included first (OTAStatus, Theme, etc.)
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -45,7 +45,7 @@ using fs::FS;
 #include "mbedtls/md.h"
 #include "esp_ota_ops.h"
 #include "esp_system.h"
-#include <APIOTA.h>   // ใช้ APIOTA_DEFAULT_PUBKEY จาก library
+#include <APIOTA.h>   // uses APIOTA_DEFAULT_PUBKEY from the library
 
 // ── PINS ─────────────────────────────────────────────────────────
 #define TFT_BL_PIN  38
@@ -54,19 +54,19 @@ using fs::FS;
 #define BTN2_PIN     0
 
 // ╔══════════════════════════════════════════════════════════════════╗
-//   USER CONFIG — แก้ไขเฉพาะส่วนนี้
+//   USER CONFIG — edit only this section
 // ╠══════════════════════════════════════════════════════════════════╣
-#define API_KEY                "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   // จาก apiota.net Dashboard
-#define CURRENT_VERSION        "1.0.2"                 // เพิ่มทุกครั้งที่ build ใหม่
+#define API_KEY                "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   // from apiota.net Dashboard
+#define CURRENT_VERSION        "1.0.2"                 // bump on every new build
 #define OTA_SERVER             "https://apiota.net"
 
-// OTA check ไม่ต้องถี่ — คำสั่งมาทันทีผ่าน long-poll แยกอยู่แล้ว (กด BTN2 = force check ได้)
-// ถี่เกิน (เช่น 15) ทำให้ TLS แย่ง heap กับ poll → คำสั่งค้าง. 60-300 กำลังดี
-#define OTA_CHECK_INTERVAL_SEC   60    // เช็ค OTA ทุก ? วินาที (300 = 5 นาที แนะนำ production)
-#define TELEMETRY_INTERVAL_SEC   20    // ส่งค่าขึ้น 🖥 Console ทุก ? วินาที (0 = ปิด) — เลี่ยงเลขชนกับ OTA check
-#define MAX_WIFI_SLOTS           5     // จำ WiFi สูงสุดกี่ network
-#define WIFI_CONNECT_TIMEOUT_MS  20000 // รอ connect แต่ละ SSID นานสูงสุดกี่ ms
-#define TFT_ROTATION             3     // 1=ปกติ, 3=กลับด้าน 180°
+// OTA check doesn't need to be frequent — commands arrive instantly via the separate long-poll (press BTN2 = force check)
+// too frequent (e.g. 15) makes TLS fight the poll for heap → commands stall. 60-300 is a good range
+#define OTA_CHECK_INTERVAL_SEC   60    // check OTA every ? seconds (300 = 5 min, recommended for production)
+#define TELEMETRY_INTERVAL_SEC   20    // send values to the 🖥 Console every ? seconds (0 = off) — avoid matching the OTA check interval
+#define MAX_WIFI_SLOTS           5     // max number of WiFi networks to remember
+#define WIFI_CONNECT_TIMEOUT_MS  20000 // max ms to wait when connecting to each SSID
+#define TFT_ROTATION             3     // 1=normal, 3=flipped 180°
 // ╚══════════════════════════════════════════════════════════════════╝
 
 // ── DISPLAY CONSTANTS ────────────────────────────────────────────
@@ -128,7 +128,7 @@ static void wifiClearAll();
 static void wifiAdd(const char* ssid, const char* pass);
 static String jget(const String& js, const char* key);
 
-// ── HELPER FILES (include หลัง global declarations) ──────────────
+// ── HELPER FILES (included after global declarations) ───────────
 #include "apiota_ui.h"     // Themes + drawing functions + pushLog + sendEv
 #include "apiota_wifi.h"   // WifiCred struct + wifi functions
 #include "apiota_tasks.h"  // OTA functions + FreeRTOS tasks
@@ -212,5 +212,5 @@ void setup() {
 
 // ── loop ─────────────────────────────────────────────────────────
 void loop() {
-  vTaskDelay(portMAX_DELAY);  // FreeRTOS tasks ทำงานทั้งหมด — loop ไม่มีงาน
+  vTaskDelay(portMAX_DELAY);  // all work runs in FreeRTOS tasks — loop has nothing to do
 }

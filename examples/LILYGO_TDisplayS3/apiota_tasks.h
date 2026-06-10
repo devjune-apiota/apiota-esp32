@@ -1,6 +1,6 @@
 // ================================================================
 //  apiota_tasks.h — OTA functions + FreeRTOS tasks
-//  ถูก include ใน main .ino หลังจากประกาศ global variables แล้ว
+//  included by the main .ino after the global variables are declared
 // ================================================================
 #pragma once
 
@@ -24,8 +24,8 @@ static OTAStatus mapApiotaState(APIOTAState s) {
   }
 }
 
-// ── ส่ง telemetry generic ขึ้น 🖥 Console (heap / rssi / uptime / theme / version) ──
-//   บอร์ดนี้ไม่มี GPS — ส่งค่าทั่วไปโชว์ว่าระบบ relay ใช้ได้ (อยากส่ง sensor อื่นก็ใส่ใน data ได้)
+// ── send generic telemetry to the 🖥 Console (heap / rssi / uptime / theme / version) ──
+//   this board has no GPS — send generic values to show the relay works (add other sensors into data if you like)
 static void sendTelemetryNow() {
   if (!APIOTA.isProvisioned() || WiFi.status() != WL_CONNECTED) return;
   ST_LOCK(); uint8_t th = g_st.theme; ST_UNLOCK();
@@ -81,16 +81,16 @@ static void taskNetwork(void*) {
     sendEv(OTA_IDLE, 0, m, nullptr, true, false);
   });
   APIOTA.onError([](const String& e) {
-    if (e.indexOf("plan_limit") >= 0) {   // provision ถูกบล็อก: เกินโควต้า device ของแผน (library ส่งผ่าน onError ไม่ใช่ onExpired)
-      g_planLimitBlocked = true;          // → taskNetwork begin()-retry รอ 5 นาที (ไม่ rapid retry)
-      showBlockedScreen("** DEVICE PLAN LIMIT **", "Plan limit exceeded", "ลบ device เก่าออกจาก Dashboard", "หรืออัปเกรด: apiota.net/pricing");
+    if (e.indexOf("plan_limit") >= 0) {   // provision blocked: plan device quota exceeded (library reports via onError, not onExpired)
+      g_planLimitBlocked = true;          // → taskNetwork begin()-retry waits 5 min (no rapid retry)
+      showBlockedScreen("** DEVICE PLAN LIMIT **", "Plan limit exceeded", "Remove an old device in Dashboard", "or upgrade: apiota.net/pricing");
       return;
     }
     char m[64]; snprintf(m, sizeof(m), "%.60s", e.c_str()); sendEv(OTA_FAILED, -1, m);
   });
   APIOTA.onCommand([](const String& cmd, const String& payload, uint32_t id) {
     char m[48]; snprintf(m, sizeof(m), "cmd: %.40s", cmd.c_str());
-    sendEv(OTA_IDLE, -1, m);   // แสดงคำสั่งบนจอ (log line) + redraw
+    sendEv(OTA_IDLE, -1, m);   // show the command on screen (log line) + redraw
     if (cmd == "led_on")       { ST_LOCK(); g_st.ledMode = 1; ST_UNLOCK(); }
     else if (cmd == "led_off") { ST_LOCK(); g_st.ledMode = 2; ST_UNLOCK(); }
     else if (cmd == "set_led") {                 // payload {"blink":ms}
@@ -113,13 +113,13 @@ static void taskNetwork(void*) {
     g_planLimitBlocked = true;
     switch (reason) {
       case APEX_LIFT_TIME:
-        showBlockedScreen("** DEVICE EXPIRED **", "Device Lift Time \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38\u0e41\u0e25\u0e49\u0e27", "\u0e15\u0e48\u0e2d\u0e2d\u0e32\u0e22\u0e38\u0e17\u0e35\u0e48 apiota.net", "Management > Device Lift Time"); break;
+        showBlockedScreen("** DEVICE EXPIRED **", "Device Lift Time expired", "Renew at apiota.net", "Management > Device Lift Time"); break;
       case APEX_WORKING:
-        showBlockedScreen("** DEVICE EXPIRED **", "Working Lifetime \u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38\u0e41\u0e25\u0e49\u0e27", "\u0e15\u0e48\u0e2d\u0e2d\u0e32\u0e22\u0e38\u0e17\u0e35\u0e48 apiota.net", "Management > Working Lifetime"); break;
+        showBlockedScreen("** DEVICE EXPIRED **", "Working Lifetime expired", "Renew at apiota.net", "Management > Working Lifetime"); break;
       case APEX_PLAN_LIMIT:
-        showBlockedScreen("** DEVICE PLAN LIMIT **", "Plan limit exceeded", "\u0e25\u0e1a device \u0e40\u0e01\u0e48\u0e32\u0e2d\u0e2d\u0e01\u0e08\u0e32\u0e01 Dashboard", "\u0e2b\u0e23\u0e37\u0e2d\u0e2d\u0e31\u0e1b\u0e40\u0e01\u0e23\u0e14: apiota.net/pricing"); break;
+        showBlockedScreen("** DEVICE PLAN LIMIT **", "Plan limit exceeded", "Remove an old device in Dashboard", "or upgrade: apiota.net/pricing"); break;
       default:
-        showBlockedScreen("** DEVICE BLOCKED **", "Access denied by server", "\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a API Key \u0e43\u0e19 Dashboard", "apiota.net"); break;
+        showBlockedScreen("** DEVICE BLOCKED **", "Access denied by server", "Check the API Key in Dashboard", "apiota.net"); break;
     }
   });
 
@@ -133,7 +133,7 @@ static void taskNetwork(void*) {
 
   // ── Steady state: tick() auto-checks OTA; BTN2/watchdog notify -> force check ──
   uint32_t lastStat = 0, lastTele = 0;
-  sendTelemetryNow();                    // ส่งค่าแรกทันทีหลัง provision → Console เห็นข้อมูลเลย ไม่ต้องรอ
+  sendTelemetryNow();                    // send the first values right after provision → Console shows data immediately
   for (;;) {
     if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000)) > 0) APIOTA.forceCheck();
     APIOTA.tick();

@@ -1,6 +1,6 @@
 #pragma once
 // ================================================================
-//  display_types.h — shared enums & structs สำหรับ APIOTA Display
+//  display_types.h — shared enums & structs for APIOTA Display
 // ================================================================
 #include <Arduino.h>
 

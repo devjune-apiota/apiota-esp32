@@ -1,6 +1,6 @@
 // ================================================================
 //  apiota_wifi.h — Multi-WiFi NVS, MRU ordering, portal
-//  ถูก include ใน main .ino หลังจากประกาศ global variables แล้ว
+//  included by the main .ino after the global variables are declared
 // ================================================================
 #pragma once
 
@@ -16,7 +16,7 @@ static uint8_t   g_wifiCount   = 0;
 static uint8_t   g_wifiCurrent = 0;
 static volatile bool g_portalActive = false;
 
-// ── JSON helper (ใช้ใน OTA functions ด้วย) ───────────────────────
+// ── JSON helper (also used by the OTA functions) ────────────────
 static String jget(const String& js, const char* key) {
   String sk = String('"') + key + "\":";
   int s = js.indexOf(sk);
@@ -94,14 +94,14 @@ static void wifiAdd(const char* ssid, const char* pass) {
   Serial.printf("[WIFI] added: %s (total %d)\n",ssid,g_wifiCount);
 }
 
-__attribute__((unused)) static void wifiDelete(uint8_t index) {  // helper CRUD (ยังไม่มีที่เรียก — กัน -Wunused)
+__attribute__((unused)) static void wifiDelete(uint8_t index) {  // CRUD helper (not called yet — silences -Wunused)
   if (index>=g_wifiCount) return;
   for (uint8_t i=index;i<g_wifiCount-1;i++) g_wifiList[i]=g_wifiList[i+1];
   g_wifiCount--; memset(&g_wifiList[g_wifiCount],0,sizeof(WifiCred));
   wifiSaveAll();
 }
 
-// ── MRU: เลื่อน WiFi ที่เพิ่ง connect ขึ้น slot 0 ──────────────
+// ── MRU: move the just-connected WiFi up to slot 0 ─────────────
 static void wifiMoveToFront(uint8_t idx) {
   if (idx==0||idx>=g_wifiCount) return;
   WifiCred recent=g_wifiList[idx];
@@ -115,7 +115,7 @@ static void wifiClearAll() {
   g_wifiCount=0; memset(g_wifiList,0,sizeof(g_wifiList));
   Preferences prefs; prefs.begin(NVS_NAMESPACE,false); prefs.clear(); prefs.end();
   WiFi.disconnect(true,true);
-  // ล้าง device secret ด้วย
+  // also clear the device secret
   Preferences ap; ap.begin("apiota",false); ap.remove("dev_sec"); ap.remove("dev_id"); ap.end();
 }
 

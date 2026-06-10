@@ -1,6 +1,6 @@
 // ================================================================
 //  apiota_ui.h — TFT drawing helpers, themes, pushLog, sendEv
-//  ถูก include ใน main .ino หลังจากประกาศ global variables แล้ว
+//  included by the main .ino after the global variables are declared
 // ================================================================
 #pragma once
 
@@ -154,7 +154,7 @@ static void pushLog(const char* msg) {
   SharedState snap=g_st; uint8_t ti=g_st.theme;
   ST_UNLOCK();
   Serial.printf("[LOG] %s\n",msg);
-  if (!g_tasksStarted) rLog(snap,THEMES[ti]);  // boot mode: render ตรงจอ
+  if (!g_tasksStarted) rLog(snap,THEMES[ti]);  // boot mode: render directly to the screen
 }
 
 static void sendEv(OTAStatus st,int pct,const char* msg,
