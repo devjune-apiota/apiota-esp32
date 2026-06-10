@@ -1,12 +1,12 @@
 /*
   ================================================================
    LILYGO_TSIM_A7670G — APIOTA Library Example
-   สำหรับ: LILYGO TTGO T-SIM A7670G (ESP32 + SIMCom A7670G LTE Cat-1)
+   For: LILYGO TTGO T-SIM A7670G (ESP32 + SIMCom A7670G LTE Cat-1)
    ================================================================
 
    Board: LILYGO T-SIM A7670G
    Modem: SIMCom A7670G — LTE Cat-1 / GSM / GPRS
-   Network: 4G LTE Cat-1 (ดีกว่า SIM800L มาก, SSL/TLS native)
+   Network: 4G LTE Cat-1 (much better than SIM800L, native SSL/TLS)
 
    Pin Mapping (T-SIM A7670G):
      Modem UART TX  → ESP32 GPIO 26  (Serial1 RX)
@@ -16,26 +16,26 @@
      STATUS_PIN     → ESP32 GPIO 23  (modem status output)
      RI (Ring Ind.) → ESP32 GPIO 33  (optional)
 
-   Dependencies (ติดตั้งใน Library Manager):
-     - TinyGSM (vshymanskyy) — v0.12.0+ รองรับ A7670
+   Dependencies (install via Library Manager):
+     - TinyGSM (vshymanskyy) — v0.12.0+ supports A7670
 
    Notes:
-     - A7670G รองรับ SSL/TLS native → ใช้ TinyGsmClientSecure ได้เลย
-     - LTE Cat-1: ดาวน์โหลด firmware เร็วกว่า SIM800L GPRS ~10x
-     - ไม่ต้องระวังเรื่อง voltage พิเศษ (board มี power circuit ครบ)
+     - A7670G supports native SSL/TLS → use TinyGsmClientSecure directly
+     - LTE Cat-1: downloads firmware ~10x faster than SIM800L GPRS
+     - no special voltage concerns (board has a complete power circuit)
   ================================================================
 */
 
 // ╔══════════════════════════════════════════════════════════════╗
-//   DEBUG TOGGLE — เปิดตอนเทส / ปิดตอนใช้งานจริง
-//     1 = โหมดเทส: โชว์ AT ดิบ + log ละเอียดทุก step
-//     0 = production: เงียบ (โชว์เฉพาะเนื้องาน/สถานะ OTA), เสถียร, เร็วกว่า
+//   DEBUG TOGGLE — on while testing / off in production
+//     1 = test mode: show raw AT + verbose log for every step
+//     0 = production: quiet (only work/OTA status), stable, faster
 // ╚══════════════════════════════════════════════════════════════╝
 #define DEBUG_MODE  1
 
 // ── MODEM SELECTION ─────────────────────────────────────────────
-#define TINY_GSM_MODEM_A7672X   // A7670G: driver A7672X (มี TinyGsmClientSecure)
-#define TINY_GSM_YIELD_MS  1    // driver yield 1ms ตอนรอ AT → กัน Task Watchdog reset ระหว่าง SSL read
+#define TINY_GSM_MODEM_A7672X   // A7670G: uses the A7672X driver (has TinyGsmClientSecure)
+#define TINY_GSM_YIELD_MS  1    // driver yields 1ms while waiting for AT → prevents Task Watchdog reset during SSL read
 #if DEBUG_MODE
 #define TINY_GSM_DEBUG  Serial
 #endif
@@ -52,7 +52,7 @@
 #include "esp_system.h"
 
 // ── LOG MACROS ──────────────────────────────────────────────────
-//   LOGD = log ละเอียด (เฉพาะ DEBUG_MODE) | LOG = เนื้องานหลัก (โชว์เสมอ)
+//   LOGD = verbose log (DEBUG_MODE only) | LOG = main output (always shown)
 #if DEBUG_MODE
 #define LOGD(...)   Serial.printf(__VA_ARGS__)
 #define LOGDLN(x)   Serial.println(x)
@@ -64,32 +64,32 @@
 #define LOGLN(x)      Serial.println(x)
 
 // ╔══════════════════════════════════════════════════════════════════╗
-//   USER CONFIG — แก้ไขเฉพาะส่วนนี้
+//   USER CONFIG — edit only this section
 // ╠══════════════════════════════════════════════════════════════════╣
-#define API_KEY           "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // จาก apiota.net Dashboard
-#define CURRENT_VERSION   "1.0.0"                // เพิ่มทุกครั้งที่ build ใหม่
+#define API_KEY           "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
+#define CURRENT_VERSION   "1.0.0"                // bump on every new build
 #define OTA_SERVER        "apiota.net"
 #define OTA_SERVER_PORT   443                    // HTTPS
 
-// ── APN ตาม network operator ──
-#define APN               "www.dtac.co.th" // DTAC (ตามซิม) | สำรอง: www.dtac.net | AIS="internet" | TRUE="internet.true.th"
+// ── APN per your network operator ──
+#define APN               "www.dtac.co.th" // DTAC (per SIM) | alt: www.dtac.net | AIS="internet" | TRUE="internet.true.th"
 #define GPRS_USER         ""
 #define GPRS_PASS         ""
 
-#define OTA_CHECK_SEC     300   // เช็ค OTA ทุก 5 นาที
-#define TELEMETRY_SEC     10    // ส่งค่าขึ้น server (Monitor) ทุก 10 วิ — GPS/แบต/ฯลฯ
+#define OTA_CHECK_SEC     300   // check OTA every 5 minutes
+#define TELEMETRY_SEC     10    // send values to the server (Monitor) every 10s — GPS/battery/etc.
 // ╚══════════════════════════════════════════════════════════════════╝
 
 // ── PIN CONFIG (LILYGO T-A7670, ESP32-WROVER-E) ──────────────────
 #define MODEM_RX_PIN      27   // ESP RX ← modem TX
 #define MODEM_TX_PIN      26   // ESP TX → modem RX
 #define MODEM_PWRKEY_PIN   4
-#define MODEM_POWER_PIN   12   // BOARD_POWERON: HIGH = จ่ายไฟเลี้ยง modem
-#define MODEM_RESET_PIN    5   // RESET modem (active HIGH ตาม T-A7670)
+#define MODEM_POWER_PIN   12   // BOARD_POWERON: HIGH = power the modem
+#define MODEM_RESET_PIN    5   // RESET modem (active HIGH on T-A7670)
 #define MODEM_BAUD        115200
-#define LED_PIN           32   // LED สถานะ (cosmetic; เลี่ยง GPIO12 = POWERON)
-#define BAT_ADC_PIN       35   // อ่านแรงดันแบต 18650 (board มี voltage divider 2:1)
-#define BAT_LOW_VOLT      3.40 // ต่ำกว่านี้ = แบตใกล้หมด (เตือน/ลดงาน)
+#define LED_PIN           32   // status LED (cosmetic; avoid GPIO12 = POWERON)
+#define BAT_ADC_PIN       35   // read 18650 battery voltage (board has a 2:1 voltage divider)
+#define BAT_LOW_VOLT      3.40 // below this = battery almost empty (warn / reduce work)
 
 // ── PUBLIC KEY ───────────────────────────────────────────────────
 static const char* APIOTA_PUBKEY = R"KEY(
@@ -107,7 +107,7 @@ DQIDAQAB
 // ── GLOBAL OBJECTS ────────────────────────────────────────────────
 HardwareSerial modemSerial(1);          // UART1
 #if DEBUG_MODE
-// ── AT debug dumper: echo modem TX/RX ไป Serial (เฉพาะโหมดเทส) ──
+// ── AT debug dumper: echo modem TX/RX to Serial (test mode only) ──
 struct ATDump : public Stream {
   Stream& up; ATDump(Stream& u) : up(u) {}
   int available() override { return up.available(); }
@@ -119,22 +119,22 @@ struct ATDump : public Stream {
 ATDump         atStream(modemSerial);
 TinyGsm        modem(atStream);
 #else
-TinyGsm        modem(modemSerial);        // production: ต่อตรง ไม่ echo (เสถียรกว่า)
+TinyGsm        modem(modemSerial);        // production: direct, no echo (more stable)
 #endif
 TinyGsmClientSecure gsmClient(modem, 0);  // MuxChannel 0 — API calls
-// Channel 1 จะสร้างตอน download firmware เพื่อแยก connection
+// Channel 1 is created during firmware download to separate the connection
 
 static char    g_deviceId[20]     = {0};
 static char    g_deviceSecret[80] = {0};
 static bool    g_provisioned      = false;
 static uint32_t g_lastCheckMs     = 0;
-static uint32_t g_lastTeleMs      = 0;       // ส่ง telemetry (GPS/ค่า) ครั้งล่าสุด
-static uint32_t g_appliedSeq      = 0;       // B: rollout seq ที่ลงล่าสุด (เก็บ NVS) — กัน flap ตอน deploy/rollback
-static volatile float g_vbat      = 0.0f;    // แรงดันแบตล่าสุด (loop อัปเดต, otaTask ส่งขึ้น server)
+static uint32_t g_lastTeleMs      = 0;       // last telemetry send (GPS/values)
+static uint32_t g_appliedSeq      = 0;       // B: last applied rollout seq (stored in NVS) — prevents flap on deploy/rollback
+static volatile float g_vbat      = 0.0f;    // latest battery voltage (loop updates, otaTask sends to server)
 static bool    g_ledState         = false;
 
 // ── CHIP ID ──────────────────────────────────────────────────────
-// ── OTA info struct (วางก่อน function แรก กัน Arduino auto-prototype error) ──
+// ── OTA info struct (placed before the first function to avoid Arduino auto-prototype errors) ──
 struct ApiotaOTA { bool available; String version; String url; String sha256; String signature; uint32_t rolloutSeq; };
 
 static uint32_t calcChipId() {
@@ -211,39 +211,39 @@ static void clearCredentials() {
 }
 
 // ── MODEM POWER ON ───────────────────────────────────────────────
-//   A7670G power sequence ตาม SIMCom datasheet
+//   A7670G power sequence per the SIMCom datasheet
 // ─────────────────────────────────────────────────────────────────
 static void modemPowerOn() {
-  // 1) POWERON (GPIO12) จ่ายไฟเลี้ยง modem
+  // 1) POWERON (GPIO12) powers the modem
   pinMode(MODEM_POWER_PIN, OUTPUT);
   digitalWrite(MODEM_POWER_PIN, HIGH);
   delay(100);
 
-  // เปิด UART + เช็คว่า modem เปิดค้างอยู่ไหม (กรณี ESP reboot แต่ modem ยังเปิด)
-  // ถ้าเปิดอยู่แล้ว → ข้าม PWRKEY (ไม่งั้น pulse จะ toggle ปิด modem → AT ไม่ตอบ)
+  // open UART + check whether the modem is already on (ESP rebooted but modem still powered)
+  // if already on → skip PWRKEY (otherwise the pulse toggles the modem off → AT stops responding)
   modemSerial.begin(MODEM_BAUD, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
   delay(200);
   if (modem.testAT(1500)) { LOGDLN("[GSM] modem already on — skip power-on"); return; }
 
-  // 2) RESET modem (T-A7670: active HIGH) — ตามโค้ดที่ใช้งานได้จริง
+  // 2) RESET modem (T-A7670: active HIGH) — per known-working code
   pinMode(MODEM_RESET_PIN, OUTPUT);
   digitalWrite(MODEM_RESET_PIN, LOW);  delay(100);
   digitalWrite(MODEM_RESET_PIN, HIGH); delay(1000);
   digitalWrite(MODEM_RESET_PIN, LOW);
 
-  // 3) PWRKEY pulse — A7670 ต้อง HIGH นาน 1000ms (เดิม 100ms สั้นไป modem ไม่ตื่น!)
+  // 3) PWRKEY pulse — A7670 needs HIGH for 1000ms (the old 100ms was too short, modem wouldn't wake!)
   pinMode(MODEM_PWRKEY_PIN, OUTPUT);
   digitalWrite(MODEM_PWRKEY_PIN, LOW);  delay(100);
   digitalWrite(MODEM_PWRKEY_PIN, HIGH); delay(1000);
   digitalWrite(MODEM_PWRKEY_PIN, LOW);
 
-  // ไม่ poll STATUS — ความพร้อมจริงเช็คด้วย testAT() ใน modemInit()
+  // don't poll STATUS — actual readiness is checked with testAT() in modemInit()
   LOGDLN("[GSM] power-on (POWERON+RESET+PWRKEY) done, modem booting...");
-  delay(5000);   // A7670 boot ช้า รอ ~5s ก่อน AT
+  delay(5000);   // A7670 boots slowly, wait ~5s before AT
 }
 
 static void modemPowerOff() {
-  // Toggle PWRKEY เพื่อปิด
+  // Toggle PWRKEY to power off
   digitalWrite(MODEM_PWRKEY_PIN, HIGH);
   delay(1500);
   digitalWrite(MODEM_PWRKEY_PIN, LOW);
@@ -302,8 +302,8 @@ static int gsmHttpRequest(const String& method, const String& path,
     else delay(2);
   }
   client.stop();
-  // ปิด CCH SSL service ให้สุด เพื่อให้ connect ครั้งถัดไปตั้ง CCHSET/CCHSTART ใหม่ได้
-  // (ไม่งั้น request ที่ 2 จะ ERROR ที่ CCHSET เพราะ service ยังรันค้าง)
+  // fully close the CCH SSL service so the next connect can set CCHSET/CCHSTART again
+  // (otherwise the 2nd request ERRORs at CCHSET because the service is still running)
   modem.sendAT(GF("+CCHSTOP"));
   modem.waitResponse(2000L);
   return statusCode;
@@ -333,7 +333,7 @@ static bool doProvision() {
     strncpy(g_deviceSecret, secret.c_str(), sizeof(g_deviceSecret) - 1);
     saveCredentials(g_deviceSecret);
     g_provisioned = true;
-    LOG("[APIOTA] registered — รอ Approve ใน Dashboard\n");
+    LOG("[APIOTA] registered — waiting for Approve in Dashboard\n");
     return true;
   }
   if (code == 402 || code == 403) {
@@ -346,20 +346,20 @@ static bool doProvision() {
 
 static ApiotaOTA checkUpdate() {
   ApiotaOTA inf = {};
-  // B: ส่ง applied_seq → server ตัดสินจาก rollout counter (deploy/rollback flap-free)
+  // B: send applied_seq → server decides from the rollout counter (flap-free deploy/rollback)
   String path = "/api/device/check-update?version=" + urlEncode(CURRENT_VERSION) + "&seq=" + String(g_appliedSeq);
   String resp;
   int code = gsmHttpRequest("GET", path, "", resp, gsmClient);
   if (code == 404) {
-    // device ถูกลบบน server → ล้าง NVS แล้ว provision ใหม่ (self-heal)
+    // device was deleted on the server → clear NVS and re-provision (self-heal)
     LOGDLN("[APIOTA] device not found (404) — clearing NVS + re-provision");
     clearCredentials();
-    if (doProvision()) LOG("[APIOTA] re-provisioned — รอ Approve ใน Dashboard\n");
+    if (doProvision()) LOG("[APIOTA] re-provisioned — waiting for Approve in Dashboard\n");
     return inf;
   }
   if (code != 200) { LOGD("[APIOTA] checkUpdate HTTP %d\n", code); return inf; }
   inf.available  = (jget(resp, "update") == "true");
-  inf.rolloutSeq = (uint32_t)jget(resp, "rollout_seq").toInt();   // B: seq ของ rollout นี้
+  inf.rolloutSeq = (uint32_t)jget(resp, "rollout_seq").toInt();   // B: this rollout's seq
   if (inf.available) {
     inf.version   = jget(resp, "version");
     inf.url       = jget(resp, "url");
@@ -413,7 +413,7 @@ static bool performOTA(const ApiotaOTA& inf) {
   int colonIdx = host.indexOf(':');
   if (colonIdx >= 0) { port = host.substring(colonIdx + 1).toInt(); host = host.substring(0, colonIdx); }
 
-  // Use MuxChannel 1 for download (แยกจาก API client)
+  // Use MuxChannel 1 for download (separate from the API client)
   TinyGsmClientSecure dlClient(modem, 1);
   if (!dlClient.connect(host.c_str(), port)) {
     Serial.println("[OTA] download connect failed"); return false;
@@ -421,7 +421,7 @@ static bool performOTA(const ApiotaOTA& inf) {
 
   String req = "GET " + dlPath + " HTTP/1.1\r\n";
   req += "Host: " + host + "\r\n";
-  // B2: device auth headers ตอนโหลด .bin (server เพิ่ม deviceAuth ที่ download endpoint เฟส 2)
+  // B2: device auth headers when downloading .bin (server added deviceAuth at the download endpoint in phase 2)
   req += "X-Device-ID: "     + String(g_deviceId)     + "\r\n";
   if (g_deviceSecret[0])
     req += "X-Device-Secret: " + String(g_deviceSecret) + "\r\n";
@@ -452,7 +452,7 @@ static bool performOTA(const ApiotaOTA& inf) {
   mbedtls_sha256_context sha;
   mbedtls_sha256_init(&sha); mbedtls_sha256_starts(&sha, 0);
 
-  uint8_t buf[1024];   // A7670G LTE → ใช้ buffer ใหญ่ได้ (เร็วกว่า SIM800L มาก)
+  uint8_t buf[1024];   // A7670G LTE → can use a large buffer (much faster than SIM800L)
   int written = 0;
   uint32_t lastLog = 0, lastData = millis();
 
@@ -473,7 +473,7 @@ static bool performOTA(const ApiotaOTA& inf) {
       Serial.println("[OTA] flash write error"); Update.abort(); dlClient.stop(); return false;
     }
     written += rd;
-    // LED blink ระหว่าง download
+    // LED blink during download
     if (millis() - lastLog >= 2000) {
       lastLog = millis();
       int pct = (int)((int64_t)written * 100 / contentLength);
@@ -502,7 +502,7 @@ static bool performOTA(const ApiotaOTA& inf) {
   }
 
   ledBlink(3, 200);
-  // B: บันทึก rollout seq ที่เพิ่งลงสำเร็จ → รอบหน้าไม่ดึง rollout เดิมซ้ำ (flap-free)
+  // B: save the rollout seq just applied → next round won't re-pull the same rollout (flap-free)
   { Preferences p; p.begin("apiota", false); p.putULong("seq", inf.rolloutSeq); p.end(); }
   Serial.println("[OTA] ✓ SUCCESS — rebooting in 3s...");
   delay(3000);
@@ -513,10 +513,10 @@ static bool performOTA(const ApiotaOTA& inf) {
 // ── LTE CONNECT ──────────────────────────────────────────────────
 static bool lteConnect() {
   LOGD("[LTE] connecting (APN: %s)...\n", APN);
-  // A7672X driver จบ gprsConnect ด้วย +CDNSCFG ที่ A7670 (LTE) ไม่รองรับ → return false
-  // ทั้งที่ context ต่อแล้ว จึงเช็คจาก IP/CGATT จริงแทน return value
-  modem.gprsConnect(APN, GPRS_USER, GPRS_PASS);   // ตั้ง PDP context (CGATT/CGPADDR)
-  // รอ network พร้อม — retry กัน CREG ตอบเพี้ยนชั่วคราว (ไม่ fail/restart ทันที)
+  // the A7672X driver ends gprsConnect with +CDNSCFG, which A7670 (LTE) doesn't support → returns false
+  // even though the context is up, so check the real IP/CGATT instead of the return value
+  modem.gprsConnect(APN, GPRS_USER, GPRS_PASS);   // set up the PDP context (CGATT/CGPADDR)
+  // wait for the network — retry to handle temporary bad CREG replies (don't fail/restart immediately)
   for (int i = 0; i < 12; i++) {
     if (modem.isNetworkConnected()) {
       int csq = modem.getSignalQuality();   // 0-31, 99=unknown; 10+=usable
@@ -550,7 +550,7 @@ static bool modemInit() {
   LOGD("[GSM] IMEI:  %s\n", modem.getIMEI().c_str());
   LOGD("[GSM] ICCID: %s\n", modem.getSimCCID().c_str());
 
-  // รอ SIM พร้อม (ไม่เกิน 30s)
+  // wait for the SIM to be ready (up to 30s)
   LOGD("[GSM] waiting SIM");
   for (int i = 0; i < 15; i++) {
     SimStatus s = modem.getSimStatus();
@@ -560,7 +560,7 @@ static bool modemInit() {
     if (i == 14) { LOGDLN(" SIM not ready!"); return false; }
   }
 
-  // รอ network registration (ไม่เกิน 60s)
+  // wait for network registration (up to 60s)
   LOGD("[GSM] registering");
   for (int i = 0; i < 30; i++) {
     if (modem.isNetworkConnected()) {
@@ -572,8 +572,8 @@ static bool modemInit() {
     if (i == 29) { LOGDLN(" network failed!"); return false; }
   }
 
-  // SSL: ตั้ง authmode=0 = ไม่ verify server cert (A7670 ไม่มี CA + นาฬิกาไม่ sync → verify ไม่ผ่าน)
-  // ถ้าไม่ตั้ง modem จะ verify cert ของ apiota.net แล้ว fail -> CCHOPEN/connect failed
+  // SSL: authmode=0 = don't verify the server cert (A7670 has no CA + clock not synced → verify fails)
+  // if not set, the modem verifies apiota.net's cert and fails -> CCHOPEN/connect failed
   modem.sendAT(GF("+CSSLCFG=\"authmode\",0,0"));
   modem.waitResponse();
 
@@ -581,19 +581,19 @@ static bool modemInit() {
 }
 
 // ================================================================
-//  GNSS + TELEMETRY — device ส่งค่าขึ้น server (ปุ่ม 📡 Monitor)
-//    ส่ง GPS (ถ้าจับ fix ได้) + ค่าทั่วไปใน data (เช่น แบต/อุณหภูมิ/status)
+//  GNSS + TELEMETRY — device sends values to the server (📡 Monitor button)
+//    sends GPS (if a fix is available) + generic values in data (e.g. battery/temperature/status)
 // ================================================================
-// เปิด GNSS (best-effort; ถ้าเปิดอยู่แล้วจะตอบ ERROR ก็ข้ามได้)
+// turn on GNSS (best-effort; if already on it replies ERROR, which is fine to skip)
 static void gnssOn() {
   modem.sendAT(GF("+CGNSSPWR=1"));
   modem.waitResponse(10000L);                  // OK
-  modem.waitResponse(12000L, GF("READY!"));    // รอ GNSS engine พร้อม (URC) — best effort
-  LOGD("[GNSS] powered on (รอจับดาวเทียม ครั้งแรกอาจ 30s-2นาที)\n");
+  modem.waitResponse(12000L, GF("READY!"));    // wait for the GNSS engine (URC) — best effort
+  LOGD("[GNSS] powered on (acquiring satellites, first fix may take 30s-2min)\n");
 }
 
-// อ่านพิกัดจาก AT+CGNSSINFO → true ถ้ามี fix
-//   รูปแบบ: +CGNSSINFO: <mode>,<GPSsv>,<GLONASSsv>,<BEIDOUsv>,<lat>,<N/S>,<lon>,<E/W>,<date>,<utc>,<alt>,<speed>,<course>,...
+// read coordinates from AT+CGNSSINFO → true if there is a fix
+//   format: +CGNSSINFO: <mode>,<GPSsv>,<GLONASSsv>,<BEIDOUsv>,<lat>,<N/S>,<lon>,<E/W>,<date>,<utc>,<alt>,<speed>,<course>,...
 static bool readGNSS(double& lat, double& lon, double& alt, double& spd, int& sats) {
   String data;
   modem.sendAT(GF("+CGNSSINFO"));
@@ -607,7 +607,7 @@ static bool readGNSS(double& lat, double& lon, double& alt, double& spd, int& sa
   for (int i = 0; i <= (int)s.length() && n < 17; i++) {
     if (i == (int)s.length() || s[i] == ',') { tok[n++] = s.substring(start, i); start = i + 1; }
   }
-  if (n < 8 || tok[4].length() == 0 || tok[6].length() == 0) return false;   // ยังไม่มี fix
+  if (n < 8 || tok[4].length() == 0 || tok[6].length() == 0) return false;   // no fix yet
   double rawLat = tok[4].toDouble();    // ddmm.mmmmmm
   double rawLon = tok[6].toDouble();    // dddmm.mmmmmm
   double dLat = floor(rawLat / 100.0), mLat = rawLat - dLat * 100.0; lat = dLat + mLat / 60.0;
@@ -620,8 +620,8 @@ static bool readGNSS(double& lat, double& lon, double& alt, double& spd, int& sa
   return true;
 }
 
-// ส่ง telemetry ขึ้น server: GPS (ถ้ามี) + data ทั่วไป
-//   อยากเพิ่มค่าอื่น (temp/humid/status) → ใส่ใน dataBuf เป็น JSON
+// send telemetry to the server: GPS (if any) + generic data
+//   to add other values (temp/humid/status) → put them in dataBuf as JSON
 static void sendTelemetry() {
   double lat = 0, lon = 0, alt = 0, spd = 0; int sats = 0;
   bool fix = readGNSS(lat, lon, alt, spd, sats);
@@ -646,16 +646,16 @@ static void sendTelemetry() {
 }
 
 // ================================================================
-//  OTA TASK (FreeRTOS) — งาน modem/network/OTA แยกจาก loop หลัก
+//  OTA TASK (FreeRTOS) — modem/network/OTA work, separate from the main loop
 // ================================================================
 static void otaTask(void* pv) {
-  // init modem + LTE — ถ้า fail ให้ restart เพื่อ retry สะอาด (เสถียรกว่าค้าง)
+  // init modem + LTE — on failure, restart for a clean retry (more stable than hanging)
   if (!modemInit())  { LOGLN("FATAL: modem init failed — restart"); ledBlink(10,100); vTaskDelay(pdMS_TO_TICKS(2000)); ESP.restart(); }
   if (!lteConnect()) { LOGLN("FATAL: LTE connect failed — restart"); ledBlink(5,200);  vTaskDelay(pdMS_TO_TICKS(2000)); ESP.restart(); }
   ledBlink(1, 300);
-  gnssOn();   // เปิด GPS (จับ fix เบื้องหลัง — ค่าจะทยอยมาเมื่อเห็นดาวเทียม)
+  gnssOn();   // turn on GPS (acquires a fix in the background — values arrive as satellites are seen)
 
-  // provision (ถ้ายังไม่มี credential)
+  // provision (if there's no credential yet)
   loadCredentials();
   if (!g_provisioned) {
     for (int i = 0; i < 3 && !g_provisioned; i++) {
@@ -666,21 +666,21 @@ static void otaTask(void* pv) {
     if (!g_provisioned) { LOGLN("FATAL: provision failed — restart"); ledBlink(10,100); vTaskDelay(pdMS_TO_TICKS(2000)); ESP.restart(); }
   }
 
-  // OTA check ทันทีหลัง boot
+  // OTA check immediately after boot
   { ApiotaOTA inf = checkUpdate(); if (inf.available) performOTA(inf); }
-  digitalWrite(LED_PIN, HIGH);   // LED ติด = ทำงานปกติ
+  digitalWrite(LED_PIN, HIGH);   // LED on = running normally
   LOG("=== APIOTA ready (device %s) ===\n", g_deviceId);
 
-  // loop งาน OTA: reconnect ถ้าหลุด + เช็ค OTA ตาม interval
+  // OTA work loop: reconnect if dropped + check OTA on the interval
   for (;;) {
-    if (!modem.isNetworkConnected()) {   // CREG — เชื่อถือได้ (ไม่อิง CCHADDR)
+    if (!modem.isNetworkConnected()) {   // CREG — reliable (doesn't rely on CCHADDR)
       LOGDLN("[LTE] disconnected — reconnecting...");
       digitalWrite(LED_PIN, LOW);
       lteConnect();
       digitalWrite(LED_PIN, HIGH);
     }
     uint32_t now = millis();
-    // ส่ง telemetry (GPS/แบต) ขึ้น server ทุก TELEMETRY_SEC → ดูได้ที่ปุ่ม 📡 Monitor
+    // send telemetry (GPS/battery) to the server every TELEMETRY_SEC → view it in the 📡 Monitor button
     if (now - g_lastTeleMs >= (uint32_t)TELEMETRY_SEC * 1000UL) {
       g_lastTeleMs = now;
       if (modem.isNetworkConnected()) sendTelemetry();
@@ -692,12 +692,12 @@ static void otaTask(void* pv) {
       ApiotaOTA inf = checkUpdate();
       if (inf.available) performOTA(inf);
     }
-    vTaskDelay(pdMS_TO_TICKS(1000));   // yield — ไม่บล็อก task อื่น
+    vTaskDelay(pdMS_TO_TICKS(1000));   // yield — don't block other tasks
   }
 }
 
 // ================================================================
-//  SETUP — สร้าง OTA task แล้วปล่อย loop() ให้งานลูกค้า
+//  SETUP — create the OTA task and leave loop() for your application code
 // ================================================================
 void setup() {
   Serial.begin(115200);
@@ -708,43 +708,43 @@ void setup() {
   snprintf(g_deviceId, sizeof(g_deviceId), "ESP32_%06X", (unsigned)chipId);
   LOG("\n=== APIOTA T-A7670G  v%s  Device: %s ===\n", CURRENT_VERSION, g_deviceId);
 
-  // modem/OTA ทำงานใน task แยก (core 0, stack 16KB สำหรับ OTA+verify)
-  // loop() อิสระอยู่ core 1 — ใส่งานลูกค้าได้เลย ไม่ถูก OTA บล็อก
+  // modem/OTA runs in a separate task (core 0, 16KB stack for OTA+verify)
+  // loop() runs free on core 1 — put your application code there, not blocked by OTA
   xTaskCreatePinnedToCore(otaTask, "apiota_ota", 16384, NULL, 2, NULL, 0);
 }
 
 // ================================================================
-//  BATTERY — อ่านแรงดันแบต 18650 (GPIO35 + voltage divider 2:1)
+//  BATTERY — read 18650 battery voltage (GPIO35 + 2:1 voltage divider)
 // ================================================================
-static volatile bool g_batteryLow = false;   // otaTask เช็คได้ (เผื่อหยุด OTA ตอนแบตต่ำ)
+static volatile bool g_batteryLow = false;   // otaTask can check this (e.g. pause OTA on low battery)
 
 static float readBatteryVoltage() {
   uint16_t s[15];
   for (int i = 0; i < 15; i++) { s[i] = analogReadMilliVolts(BAT_ADC_PIN); delayMicroseconds(300); }
-  for (int i = 0; i < 15; i++)                  // sort หา median (กัน noise)
+  for (int i = 0; i < 15; i++)                  // sort to find the median (reduce noise)
     for (int j = i + 1; j < 15; j++)
       if (s[j] < s[i]) { uint16_t t = s[i]; s[i] = s[j]; s[j] = t; }
   return (s[7] * 2.0f) / 1000.0f;               // median × 2 (divider) / 1000
 }
 
-static int batteryPercent(float v) {          // Li-ion โดยประมาณ
+static int batteryPercent(float v) {          // approximate Li-ion
   if (v >= 4.20f) return 100;
   if (v <= 3.30f) return 0;
   return (int)((v - 3.30f) / (4.20f - 3.30f) * 100.0f);
 }
 
 // ================================================================
-//  LOOP — งานลูกค้า (อิสระ ไม่ถูก network/OTA บล็อก)
+//  LOOP — your application code (free, not blocked by network/OTA)
 // ================================================================
 void loop() {
   static uint32_t lastBat = 0;
-  if (millis() - lastBat >= 10000) {          // อ่านแบตทุก 10 วินาที
+  if (millis() - lastBat >= 10000) {          // read the battery every 10 seconds
     lastBat = millis();
     float vbat = readBatteryVoltage();
-    g_vbat = vbat;                              // เก็บให้ otaTask ส่งขึ้น server (Monitor)
-    if (vbat < 2.5f) {                          // < 2.5V = ไม่มีแบตบนราง (สวิตช์ OFF / จ่ายผ่าน USB)
+    g_vbat = vbat;                              // store for otaTask to send to the server (Monitor)
+    if (vbat < 2.5f) {                          // < 2.5V = no battery on the rail (switch OFF / powered via USB)
       g_batteryLow = false;
-      LOG("[BAT] USB power (ไม่มีแบต / สวิตช์ OFF)\n");
+      LOG("[BAT] USB power (no battery / switch OFF)\n");
     } else {
       int pct = batteryPercent(vbat);
       g_batteryLow = (vbat < BAT_LOW_VOLT);
@@ -752,8 +752,8 @@ void loop() {
     }
   }
 
-  // ───────────── ใส่งานอื่นของคุณตรงนี้ ─────────────
-  //   อ่าน sensor / ควบคุม relay ฯลฯ — OTA+4G จัดการเองใน otaTask
+  // ───────────── put your own code here ─────────────
+  //   read sensors / control relays etc. — OTA+4G is handled in otaTask
   // ───────────────────────────────────────────────────
   vTaskDelay(pdMS_TO_TICKS(1000));
 }

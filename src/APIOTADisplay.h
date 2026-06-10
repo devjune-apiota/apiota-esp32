@@ -2,8 +2,8 @@
 //   APIOTADisplay — TFT OTA monitor for LILYGO T-Display-S3 (+ ST7789)
 //   v1.0.0  ·  apiota.net  ·  header-only companion to APIOTAClient
 //   ───────────────────────────────────────────────────────────────
-//   รวม: TFT monitor UI + themes + WiFiManager + FreeRTOS tasks (display/led/button)
-//        + ผูกกับ APIOTAClient (โชว์ provision/OTA/expired บนจออัตโนมัติ)
+//   Includes: TFT monitor UI + themes + WiFiManager + FreeRTOS tasks (display/led/button)
+//        + binds to APIOTAClient (auto-shows provision/OTA/expired on screen)
 //
 //   Usage:
 //     #include <APIOTA.h>
@@ -12,7 +12,7 @@
 //     APIOTADisplay DISP;
 //     void setup(){
 //       DISP.begin("1.0.0");                 // init TFT + tasks + WiFiManager
-//       DISP.bindOTA(APIOTA);                // โชว์สถานะ OTA บนจอให้เอง
+//       DISP.bindOTA(APIOTA);                // shows OTA status on screen for you
 //       APIOTA.onCommand([](const String& c,const String& p,uint32_t id){
 //         DISP.handleCommand(c,p);           // led_on/led_off/set_led/set_brightness/theme
 //       });
@@ -20,7 +20,7 @@
 //     }
 //     void loop(){ APIOTA.tick(); DISP.tick(); }
 //
-//   ต้องตั้ง TFT_eSPI User_Setup.h ให้ตรงบอร์ด (ST7789 320x170, pins ของ T-Display-S3)
+//   Configure TFT_eSPI User_Setup.h for your board (ST7789 320x170, T-Display-S3 pins)
 //   Dependencies: TFT_eSPI · WiFiManager (tzapu) · APIOTA
 // ═══════════════════════════════════════════════════════════════════
 #pragma once
@@ -35,7 +35,7 @@
 #include "freertos/semphr.h"
 #include <APIOTA.h>   // APIOTAClient, APIOTAState, APIOTAExpiry
 
-// ── Pins (override ก่อน include ได้) ───────────────────────────────
+// ── Pins (can be overridden before include) ───────────────────────
 #ifndef APIOTADISP_TFT_BL
   #define APIOTADISP_TFT_BL  38
 #endif
@@ -111,7 +111,7 @@ public:
     xTaskCreatePinnedToCore(&APIOTADisplay::_btnTramp,  "ap_btn",  4096, this, 4, &_btnTask,  1);
   }
 
-  // เรียกใน loop() — อัปเดต stats เป็นระยะ
+  // call in loop() — periodically updates stats
   void tick() {
     uint32_t now = millis();
     if (now - _lastStat >= 5000) {
@@ -122,7 +122,7 @@ public:
     }
   }
 
-  // ผูกกับ APIOTAClient → โชว์ provision/OTA/expired บนจออัตโนมัติ
+  // bind to APIOTAClient → auto-shows provision/OTA/expired on screen
   void bindOTA(APIOTAClient& ota) {
     _ota = &ota;
     ota.onProgress([this](APIOTAState st, int pct, const char* msg){ _onProgress(st, pct, msg); });
@@ -143,7 +143,7 @@ public:
     });
   }
 
-  // เรียกจาก APIOTA.onCommand() ได้เลย — คุม led/brightness/theme สำเร็จรูป
+  // call directly from APIOTA.onCommand() — ready-made led/brightness/theme control
   bool handleCommand(const String& cmd, const String& payload) {
     char m[48]; snprintf(m, sizeof(m), "cmd: %.40s", cmd.c_str()); _sendEv(_st.status, -1, m, false, false);
     if (cmd == "led_on")  { _stLock(); _ledMode = 1; _stUnlock(); return true; }
@@ -151,7 +151,7 @@ public:
     if (cmd == "set_led") { uint32_t b=(uint32_t)_jnum(payload,"blink"); if(b<50)b=700; _stLock(); _ledMode=0; _blinkMs=b; _stUnlock(); return true; }
     if (cmd == "set_brightness") { int v=(int)_jnum(payload,"value"); if(v<0)v=0; if(v>255)v=255; analogWrite(APIOTADISP_TFT_BL, v); return true; }
     if (cmd == "theme") { int t=(int)_jnum(payload,"value"); if(t<0||t>2)t=0; _setTheme((uint8_t)t); return true; }
-    return false;  // ไม่รู้จัก — ให้ sketch จัดการต่อ
+    return false;  // unknown — let the sketch handle it
   }
 
   void log(const char* msg) { _sendEv(_st.status, -1, msg, false, false); }
@@ -236,7 +236,7 @@ private:
   }
 
   void _onProgress(APIOTAState st, int pct, const char* msg) {
-    if (msg && strstr(msg, "unlocked")) { _sendEv(st, pct, msg, true, true); return; }  // unlock -> วาดจอใหม่เต็ม
+    if (msg && strstr(msg, "unlocked")) { _sendEv(st, pct, msg, true, true); return; }  // unlock -> full screen redraw
     if (st == APST_CHECKING && msg && strstr(msg, "new version")) {
       // capture target version for the badge
       _stLock(); const char* v = strrchr(msg, ' '); if (v) { strncpy(_st.newVer, v+1, 15); _st.newVer[15]='\0'; } _stUnlock();

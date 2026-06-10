@@ -4,6 +4,14 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] - 2026-06-10
+
+### Changed
+- Translated all in-code comments to English across the core library (`APIOTAClient.h`, `APIOTADisplay.h`) and every example, plus the on-device status strings — for international users.
+- `BasicOTA` example: default `FIRMWARE_VERSION` reset to `1.0.0` as a clean starting point.
+
+No functional or API changes.
+
 ## [1.2.0] - 2026-06-09
 
 First public release.

@@ -9,7 +9,7 @@
 //       Serial.begin(115200);
 //       APIOTA.connectWiFi("ssid","pass");           // WiFi helper
 //       APIOTA.begin("ak_xxx", "1.0.0", "My Device"); // provision + OTA + poll
-//     }                                               // (library auto-logs ทาง Serial)
+//     }                                               // (library auto-logs over Serial)
 //     void loop() { APIOTA.tick(); }
 //   Optional: APIOTA.onCommand([](String c,String p,uint32_t id){ if(c=="reboot") ESP.restart(); });
 // ═══════════════════════════════════════════════════════════════════
@@ -158,7 +158,7 @@ public:
     return true;
   }
 
-  // Connect WiFi (helper) — ให้ sketch สั้นลง ไม่ต้องเขียน loop เอง
+  // Connect WiFi (helper) — keeps the sketch short, no need to write the loop yourself
   bool connectWiFi(const char* ssid, const char* pass, uint32_t timeoutMs = 20000) {
     if (WiFi.status() == WL_CONNECTED) return true;
     Serial.printf("[APIOTA] WiFi connecting: %s\n", ssid ? ssid : "");
@@ -195,10 +195,10 @@ public:
   const String& getDeviceSecret() const { return _deviceSecret; }
   APIOTAState   getState() const        { return _state; }
 
-  // ── Telemetry — ส่งค่าอะไรก็ได้ขึ้น server (โชว์ใน Dashboard → 🖥 Console) ──
-  //   dataJson = JSON object string เช่น "{\"heap_kb\":120,\"rssi\":-60}"
-  //   มี GPS ก็ใช้ overload แบบใส่ lat/lon ได้
-  //   คืน true ถ้า server รับ (HTTP 200) · ต้อง provisioned ก่อน
+  // ── Telemetry — send any values to the server (shown in Dashboard → 🖥 Console) ──
+  //   dataJson = a JSON object string, e.g. "{\"heap_kb\":120,\"rssi\":-60}"
+  //   if you have GPS, use the overload that takes lat/lon
+  //   returns true if the server accepts it (HTTP 200) · must be provisioned first
   bool sendTelemetry(const String& dataJson) {
     return _sendTelemetry(dataJson, false, 0, 0);
   }
@@ -297,7 +297,7 @@ public:
     APIOTAUpdateInfo inf;
     if (!_provisioned) return inf;
     _emitProgress(APST_CHECKING, 0, "checking update...");
-    // B: ส่ง applied_seq → server ตัดสินจาก rollout counter (deploy/rollback flap-free)
+    // B: send applied_seq → server decides from the rollout counter (flap-free deploy/rollback)
     String path = "/api/device/check-update?version=" + _urlEncode(_fwVer) + "&seq=" + String(_appliedSeq);
     String resp;
     int code = _httpGet(path, resp);
@@ -311,12 +311,12 @@ public:
     }
     if (code != 200) { _emitError("checkUpdate HTTP " + String(code)); return inf; }
     inf.available  = (_jget(resp, "update") == "true");
-    inf.rolloutSeq = (uint32_t)_jget(resp, "rollout_seq").toInt();   // B: seq ของ rollout นี้
+    inf.rolloutSeq = (uint32_t)_jget(resp, "rollout_seq").toInt();   // B: this rollout's seq
     if (inf.available) {
       inf.version   = _jget(resp, "version");
       inf.url       = _jget(resp, "url");
       inf.sha256    = _jget(resp, "sha256");
-      inf.sha256.toLowerCase();  // normalize lowercase — server อาจส่ง upper/lower
+      inf.sha256.toLowerCase();  // normalize to lowercase — server may send upper/lower
       inf.signature = _jget(resp, "signature");
       _emitProgress(APST_CHECKING, 100, ("new version: " + inf.version).c_str());
     } else {
@@ -345,7 +345,7 @@ public:
       return false;
     }
     _reportLog("success", _fwVer.c_str(), inf.version.c_str(), "OTA complete, rebooting");
-    // B: บันทึก rollout seq ที่เพิ่งลงสำเร็จ → รอบหน้าไม่ดึง rollout เดิมซ้ำ (flap-free)
+    // B: save the rollout seq just applied → next round won't re-pull the same rollout (flap-free)
     _appliedSeq = inf.rolloutSeq;
     _prefs.begin("apiota", false);
     _prefs.putULong("seq", _appliedSeq);
@@ -409,7 +409,7 @@ private:
     if (_deviceName.length() == 0) _deviceName = _deviceId;
   }
 
-  uint32_t _appliedSeq = 0;   // B: rollout seq ที่ลงล่าสุด (เก็บใน NVS)
+  uint32_t _appliedSeq = 0;   // B: last applied rollout seq (stored in NVS)
   void _loadFromNVS() {
     _prefs.begin("apiota", false);
     String savedId  = _prefs.getString("dev_id", "");
@@ -621,7 +621,7 @@ private:
     WiFiClientSecure client; _secureBegin(client);
     HTTPClient http;
     if (!http.begin(client, inf.url)) { _emitProgress(APST_FAILED, -1, "HTTPS begin fail"); return false; }
-    _addAuthHeaders(http);   // B2: ส่ง X-Device-ID/Secret/Chip-ID ตอนโหลด .bin (เฟส 2: server เพิ่ม deviceAuth ที่ download endpoint)
+    _addAuthHeaders(http);   // B2: send X-Device-ID/Secret/Chip-ID when downloading .bin (phase 2: server added deviceAuth at the download endpoint)
     http.setTimeout(30000);
     int code = http.GET();
     if (code != HTTP_CODE_OK) { _emitProgress(APST_FAILED, -1, "HTTP error"); http.end(); return false; }
@@ -735,7 +735,7 @@ private:
           vTaskDelay(pdMS_TO_TICKS(5000));
         }
       } else if (code == 403) {
-        // 403 จาก owner-status (locked / pending approval) — อย่าล้าง NVS / re-provision
+        // 403 from owner-status (locked / pending approval) — don't clear NVS / re-provision
         if (resp.indexOf("device_locked") >= 0) {
           if (!_blockedNotified) {
             _blockedNotified = true;
@@ -743,14 +743,14 @@ private:
             if (_expCb) _expCb(APEX_BLOCKED, _jget(resp, "error"));
           }
           authFailCount = 0;
-          vTaskDelay(pdMS_TO_TICKS(15000));   // คอย unlock แล้วกู้คืนเอง
+          vTaskDelay(pdMS_TO_TICKS(15000));   // wait for unlock, then recover automatically
         } else if (resp.indexOf("device_pending_approval") >= 0) {
           authFailCount = 0;
           vTaskDelay(pdMS_TO_TICKS(15000));
         } else if (resp.indexOf("working_expired") >= 0) {
           _emitExpired(APEX_WORKING, "working_expired");
         } else {
-          // 403 จริง (invalid secret) → re-provision
+          // genuine 403 (invalid secret) → re-provision
           authFailCount++;
           if (authFailCount >= 3) {
             _clearNVS(); _deviceSecret = ""; _provisioned = false;
@@ -761,7 +761,7 @@ private:
           }
         }
       } else {
-        // code <= 0 = ต่อ TLS ไม่ติด (มัก heap ไม่พอ ตอน OTA-check/telemetry แย่ง) → ถอยสั้น กู้คืนเร็ว
+        // code <= 0 = TLS didn't connect (often low heap when OTA-check/telemetry compete) → short backoff, quick recovery
         vTaskDelay(pdMS_TO_TICKS(2000));
       }
     }
