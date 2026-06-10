@@ -57,7 +57,7 @@ using fs::FS;
 //   USER CONFIG — edit only this section
 // ╠══════════════════════════════════════════════════════════════════╣
 #define API_KEY                "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   // from apiota.net Dashboard
-#define CURRENT_VERSION        "1.0.2"                 // bump on every new build
+#define CURRENT_VERSION        "1.0.0"                 // bump on every new build
 #define OTA_SERVER             "https://apiota.net"
 
 // OTA check doesn't need to be frequent — commands arrive instantly via the separate long-poll (press BTN2 = force check)

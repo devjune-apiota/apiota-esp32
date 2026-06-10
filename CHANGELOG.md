@@ -4,6 +4,15 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.2] - 2026-06-10
+
+### Added
+- `MultiTask` example — OTA + command polling run in a FreeRTOS task; `loop()` stays free and uses no `delay()`.
+- `WiFiPortal` example — multitasking OTA plus a WiFiManager captive portal for Wi-Fi setup (no hardcoded credentials). Requires the WiFiManager library.
+
+### Changed
+- `LILYGO_TDisplayS3` example: default `CURRENT_VERSION` reset to `1.0.0`.
+
 ## [1.2.1] - 2026-06-10
 
 ### Changed
