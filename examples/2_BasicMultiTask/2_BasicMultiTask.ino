@@ -1,6 +1,6 @@
 /*
   ================================================================
-   MultiTask — APIOTA Library Example
+   BasicMultiTask — APIOTA Library Example
    ESP32 Dev Module (no display) — OTA with FreeRTOS multitasking
    ────────────────────────────────────────────────
    Same as BasicOTA, but avoids delay(): OTA + command polling run
@@ -16,7 +16,7 @@
 #define WIFI_PASSWORD      "YOUR_WIFI_PASSWORD"
 #define API_KEY            "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
 #define FIRMWARE_VERSION   "1.0.0"          // bump on every new build
-#define DEVICE_NAME        "MultiTask"
+#define DEVICE_NAME        "BasicMultiTask"
 #define OTA_CHECK_SEC      15               // test 15s; production recommended 300
 #define STATUS_LED         2                // onboard LED (most ESP32 dev boards = GPIO2)
 

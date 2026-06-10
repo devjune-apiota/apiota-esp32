@@ -4,6 +4,12 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.3] - 2026-06-10
+
+### Changed
+- Renamed the `MultiTask` example to `BasicMultiTask`.
+- Numbered the example folders (`1_BasicOTA`, `2_BasicMultiTask`, `3_WiFiPortal`, `4_LILYGO_TDisplayS3`, `5_LILYGO_TSIM_A7670G`) so they list in a logical order in the Arduino IDE and on GitHub.
+
 ## [1.2.2] - 2026-06-10
 
 ### Added
