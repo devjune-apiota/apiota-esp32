@@ -1,28 +1,24 @@
 /*
   ================================================================
-   WiFiPortal — APIOTA Library Example
-   ESP32 Dev Module (no display)
-   multitasking OTA (no delay()) + WiFiManager captive portal
+   BasicMultiTask — APIOTA Library Example
+   ESP32 Dev Module (no display) — OTA with FreeRTOS multitasking
    ────────────────────────────────────────────────
-   Like MultiTask, but WiFi is configured through a captive portal
-   instead of hardcoded credentials. On first boot (or when no known
-   WiFi is found) the device opens an access point "APIOTA-ESP32-SETUP"
-   — connect to it with a phone and pick your network.
-   Dependency: WiFiManager (tzapu) — install via Library Manager
+   Same as BasicAPIOTA, but avoids delay(): OTA + command polling run
+   in their own FreeRTOS task, so loop() stays free for your own
+   application code (non-blocking, millis()-based).
    add onCommand to receive led_on / led_off from the Dashboard
   ================================================================
 */
-#include <WiFiManager.h>   // https://github.com/tzapu/WiFiManager
 #include <APIOTA.h>
 
 // ── USER CONFIG ──────────────────────────────────────────────────
+#define WIFI_SSID          "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD      "YOUR_WIFI_PASSWORD"
 #define API_KEY            "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
 #define FIRMWARE_VERSION   "1.0.0"          // bump on every new build
-#define DEVICE_NAME        "WiFiPortal"
+#define DEVICE_NAME        "BasicMultiTask"
 #define OTA_CHECK_SEC      15               // test 15s; production recommended 300
 #define STATUS_LED         2                // onboard LED (most ESP32 dev boards = GPIO2)
-#define PORTAL_NAME        "APIOTA-ESP32-SETUP"   // WiFi config portal SSID
-#define PORTAL_TIMEOUT_SEC 180             // close the portal after this if unused
 
 APIOTAClient APIOTA;
 
@@ -30,18 +26,12 @@ APIOTAClient APIOTA;
 volatile int g_ledMode = 0;   // 0 = blink, 1 = on, 2 = off
 
 // ── OTA TASK ─────────────────────────────────────────────────────
-// WiFiManager portal + provisioning + OTA + command polling, all on
-// its own core, so loop() never has to block.
+// Handles WiFi, provisioning, OTA and command polling on its own
+// core, so loop() never has to block.
 void apiotaTask(void* pv) {
-  // WiFi via captive portal — no hardcoded SSID/password
-  WiFiManager wm;
-  wm.setConfigPortalTimeout(PORTAL_TIMEOUT_SEC);
-  if (!wm.autoConnect(PORTAL_NAME)) {
-    Serial.println("[WiFi] portal timed out — restarting");
-    ESP.restart();
-  }
-
   APIOTA.setCheckInterval(OTA_CHECK_SEC);
+  APIOTA.connectWiFi(WIFI_SSID, WIFI_PASSWORD);   // WiFi (helper in library)
+
   APIOTA.onCommand([](const String& cmd, const String& payload, uint32_t id){
     if (cmd == "led_on")  g_ledMode = 1;
     if (cmd == "led_off") g_ledMode = 2;
@@ -60,9 +50,8 @@ void setup() {
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
 
-  // WiFiManager portal + OTA run on core 0; loop() stays free on core 1
-  // (larger stack: the captive portal runs its own web server)
-  xTaskCreatePinnedToCore(apiotaTask, "apiota_ota", 12288, NULL, 2, NULL, 0);
+  // OTA/network runs on core 0; loop() stays free on core 1
+  xTaskCreatePinnedToCore(apiotaTask, "apiota_ota", 8192, NULL, 2, NULL, 0);
 }
 
 // ── loop ─────────────────────────────────────────────────────────

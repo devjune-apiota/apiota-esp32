@@ -60,9 +60,9 @@ Arduino **Library Manager**:
 
 | Example | Extra library | Why |
 |---|---|---|
-| `BasicOTA` | _(none)_ | uses the built-in `connectWiFi()` helper |
+| `BasicAPIOTA` | _(none)_ | uses the built-in `connectWiFi()` helper |
 | `BasicMultiTask` | _(none)_ | OTA in a FreeRTOS task, no `delay()` |
-| `WiFiPortal` | [WiFiManager](https://github.com/tzapu/WiFiManager) | multitasking OTA + Wi-Fi captive portal |
+| `BasicWiFiPortal` | [WiFiManager](https://github.com/tzapu/WiFiManager) | multitasking OTA + Wi-Fi captive portal |
 | `LILYGO_TDisplayS3` | [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI), [WiFiManager](https://github.com/tzapu/WiFiManager) | on-screen UI + Wi-Fi captive portal |
 | `LILYGO_TSIM_A7670G` | [TinyGSM](https://github.com/vshymanskyy/TinyGSM) | OTA over a 4G/cellular modem |
 
@@ -101,9 +101,9 @@ Point the library at your own backend before including it:
 
 | Example | Board | Display | Notes |
 |---|---|---|---|
-| **BasicOTA** | any ESP32 | — | minimal: Wi-Fi + OTA + `led_on`/`led_off` command |
+| **BasicAPIOTA** | any ESP32 | — | minimal: Wi-Fi + OTA + `led_on`/`led_off` command |
 | **BasicMultiTask** | any ESP32 | — | OTA in a FreeRTOS task — no `delay()`, `loop()` stays free |
-| **WiFiPortal** | any ESP32 | — | multitasking OTA + WiFiManager captive portal (no hardcoded Wi-Fi) |
+| **BasicWiFiPortal** | any ESP32 | — | multitasking OTA + WiFiManager captive portal (no hardcoded Wi-Fi) |
 | **LILYGO_TDisplayS3** | LILYGO T-Display-S3 | yes | full on-screen UI, Wi-Fi portal, status screens |
 | **LILYGO_TSIM_A7670G** | LILYGO T-SIM A7670G | — | OTA over 4G cellular |
 

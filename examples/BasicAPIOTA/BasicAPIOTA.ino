@@ -1,6 +1,6 @@
 /*
   ================================================================
-   BasicOTA — APIOTA Library Example
+   BasicAPIOTA — APIOTA Library Example
    ESP32 Dev Module (no display) — minimal + LED command
    ────────────────────────────────────────────────
    WiFi + provision + OTA + RSA/SHA verify + TLS(CA) + command poll
