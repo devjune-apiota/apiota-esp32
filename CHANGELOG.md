@@ -4,6 +4,14 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] - 2026-06-11
+
+### Changed
+- `LILYGO_TSIM_A7670G` (standalone) now supports the **Approval/Lock gate** (`g_devReady` +
+  loop hold with fast-blink LED) and **device name sync** (new `DEVICE_NAME` define, sent
+  with `check-update`) — same behaviour as the library-based examples in v1.4.0.
+- `BasicAPIOTA`: reset LED state right after approval.
+
 ## [1.4.0] - 2026-06-11
 
 ### Added

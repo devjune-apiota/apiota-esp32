@@ -68,6 +68,7 @@
 // ╠══════════════════════════════════════════════════════════════════╣
 #define API_KEY           "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
 #define CURRENT_VERSION   "1.0.0"                // bump on every new build
+#define DEVICE_NAME       "TSIM_A7670G"          // shown in Dashboard → Devices (syncs on reflash, v1.4.1)
 #define OTA_SERVER        "apiota.net"
 #define OTA_SERVER_PORT   443                    // HTTPS
 
@@ -130,6 +131,7 @@ static bool    g_provisioned      = false;
 static uint32_t g_lastCheckMs     = 0;
 static uint32_t g_lastTeleMs      = 0;       // last telemetry send (GPS/values)
 static uint32_t g_appliedSeq      = 0;       // B: last applied rollout seq (stored in NVS) — prevents flap on deploy/rollback
+static volatile bool g_devReady   = true;    // v1.4.1: false = pending ✓ Approve / locked — gate your loop() with this
 static volatile float g_vbat      = 0.0f;    // latest battery voltage (loop updates, otaTask sends to server)
 static bool    g_ledState         = false;
 
@@ -318,7 +320,7 @@ static bool doProvision() {
   String body = String("{") +
     "\"api_key\":\"" + API_KEY + "\"," +
     "\"device_id\":\"" + g_deviceId + "\"," +
-    "\"device_name\":\"" + g_deviceId + "\"," +
+    "\"device_name\":\"" + DEVICE_NAME + "\"," +
     "\"version\":\"" + CURRENT_VERSION + "\"," +
     "\"chip_info\":{\"chip_id\":" + String(chipId) + ",\"chip_id_hex\":\"" + hexId + "\"}" +
     "}";
@@ -333,6 +335,7 @@ static bool doProvision() {
     strncpy(g_deviceSecret, secret.c_str(), sizeof(g_deviceSecret) - 1);
     saveCredentials(g_deviceSecret);
     g_provisioned = true;
+    g_devReady = (jget(resp, "requires_approval") != "true");   // v1.4.1: pending → hold until ✓ Approve
     LOG("[APIOTA] registered — waiting for Approve in Dashboard\n");
     return true;
   }
@@ -347,7 +350,7 @@ static bool doProvision() {
 static ApiotaOTA checkUpdate() {
   ApiotaOTA inf = {};
   // B: send applied_seq → server decides from the rollout counter (flap-free deploy/rollback)
-  String path = "/api/device/check-update?version=" + urlEncode(CURRENT_VERSION) + "&seq=" + String(g_appliedSeq);
+  String path = "/api/device/check-update?version=" + urlEncode(CURRENT_VERSION) + "&seq=" + String(g_appliedSeq) + "&name=" + urlEncode(DEVICE_NAME);   // v1.4.1: name sync
   String resp;
   int code = gsmHttpRequest("GET", path, "", resp, gsmClient);
   if (code == 404) {
@@ -357,7 +360,11 @@ static ApiotaOTA checkUpdate() {
     if (doProvision()) LOG("[APIOTA] re-provisioned — waiting for Approve in Dashboard\n");
     return inf;
   }
+  // v1.4.1: Approval / Lock gate — pending/locked → g_devReady=false (loop() ที่ gate ไว้จะหยุดรอ)
+  if (code == 403 && resp.indexOf("device_pending_approval") >= 0) { g_devReady = false; LOGDLN("[APIOTA] waiting for owner approval"); return inf; }
+  if (code == 403 && resp.indexOf("device_locked") >= 0)           { g_devReady = false; LOGDLN("[APIOTA] device LOCKED by owner");    return inf; }
   if (code != 200) { LOGD("[APIOTA] checkUpdate HTTP %d\n", code); return inf; }
+  g_devReady = true;   // approved + unlocked
   inf.available  = (jget(resp, "update") == "true");
   inf.rolloutSeq = (uint32_t)jget(resp, "rollout_seq").toInt();   // B: this rollout's seq
   if (inf.available) {
@@ -737,6 +744,16 @@ static int batteryPercent(float v) {          // approximate Li-ion
 //  LOOP — your application code (free, not blocked by network/OTA)
 // ================================================================
 void loop() {
+  // ── Approval / Lock gate (v1.4.1) — otaTask ยังเช็ค server ต่อ ปลดเองเมื่อ ✓ Approve / Unlock ──
+  static bool s_wasReady = true;
+  if (!g_devReady) {
+    s_wasReady = false;
+    digitalWrite(LED_PIN, (millis() / 150) % 2);   // fast blink = waiting
+    vTaskDelay(pdMS_TO_TICKS(100));
+    return;                                        // application code does not run yet
+  }
+  if (!s_wasReady) { s_wasReady = true; digitalWrite(LED_PIN, HIGH); LOG("[APIOTA] approved/unlocked - resuming\n"); }
+
   static uint32_t lastBat = 0;
   if (millis() - lastBat >= 10000) {          // read the battery every 10 seconds
     lastBat = millis();
