@@ -61,6 +61,8 @@ void loop() {
     delay(100);
     return;                                           // application code does not run yet
   }
+  static bool s_justApproved = true;
+  if (s_justApproved) { s_justApproved = false; digitalWrite(STATUS_LED, LOW); }   // reset LED after approval
 
   // ── your application code below ──────────────────────────────────
   // apply the live config value — LED blinks at the rate set in Device Config
