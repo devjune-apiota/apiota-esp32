@@ -6,6 +6,8 @@
    WiFi + provision + OTA + RSA/SHA verify + TLS(CA) + command poll
    all handled inside the library + logs every step over Serial
    add onCommand to receive led_on / led_off from the Dashboard
+   add onConfig to receive Device Config values (v1.3.0+) — fires
+   at boot + instantly every time you press Save Config
   ================================================================
 */
 #include <APIOTA.h>
@@ -21,6 +23,9 @@
 
 APIOTAClient APIOTA;
 
+// values you can change live from Dashboard → ⚙️ Device Config (no reflash)
+int blinkMs = 0;   // key "blink_ms" — 0 = LED steady, >0 = blink interval
+
 void setup() {
   Serial.begin(115200);
   pinMode(STATUS_LED, OUTPUT);
@@ -35,10 +40,22 @@ void setup() {
     if (cmd == "led_off") digitalWrite(STATUS_LED, LOW);
   });
 
+  // Device Config (v1.3.0+) — set key "blink_ms" in Dashboard → ⚙️ Device Config → Save
+  // the callback fires once at boot and instantly on every Save (no polling needed)
+  APIOTA.onConfig([](const String& json){
+    blinkMs = APIOTA.configGetInt("blink_ms", 0);   // default 0 when key not set
+    Serial.printf("[CONFIG] blink_ms = %d (raw: %s)\n", blinkMs, json.c_str());
+  });
+
   APIOTA.begin(API_KEY, FIRMWARE_VERSION, DEVICE_NAME);   // provision + OTA + poll task
 }
 
 void loop() {
   APIOTA.tick();   // auto-check OTA on the configured interval
-  delay(1000);
+
+  // apply the live config value — LED blinks at the rate set in Device Config
+  if (blinkMs > 0) {
+    digitalWrite(STATUS_LED, (millis() / blinkMs) % 2);
+  }
+  delay(20);   // keep loop responsive (no long delay)
 }

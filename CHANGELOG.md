@@ -4,6 +4,15 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-06-11
+
+### Changed
+- `BasicAPIOTA` example now demonstrates **Device Config**: `onConfig()` + `configGetInt("blink_ms", 0)` —
+  change the LED blink rate live from the Dashboard (⚙️ Device Config → Save) without reflashing.
+  Loop is non-blocking (`delay(20)` instead of `delay(1000)`).
+
+No library code changes — examples only.
+
 ## [1.3.0] - 2026-06-11
 
 ### Added
