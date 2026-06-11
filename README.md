@@ -121,9 +121,19 @@ APIOTA.onCommand([](const String& cmd, const String& payload, uint32_t id){ ... 
 APIOTA.onProgress([](int percent){ ... });
 APIOTA.onExpired([](const String& reason){ ... });
 APIOTA.sendTelemetry("{\"temp\":25}");
+
+// Device Config (v1.3.0) — values set in Dashboard → ⚙️ Device Config
+// callback fires once at boot + instantly on every Save Config (server pushes
+// a config_update command through the free idle long-poll — no polling needed)
+APIOTA.onConfig([](const String& json){
+  int   temp = APIOTA.configGetInt("temp", 50);     // with default
+  float gain = APIOTA.configGetFloat("gain", 1.0);
+  String mode = APIOTA.configGet("mode", "auto");
+});
+APIOTA.fetchConfig();        // manual refresh (rarely needed) — 1 Realtime call
 ```
 
-`reboot` and `check_update` commands are handled by the library automatically.
+`reboot`, `check_update` and `config_update` commands are handled by the library automatically.
 
 ### Device states
 

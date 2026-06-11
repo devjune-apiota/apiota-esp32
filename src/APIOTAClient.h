@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 //   APIOTA Client — ESP32 OTA + Command + Provisioning Library
-//   v1.2.0  ·  apiota.net
+//   v1.3.0  ·  apiota.net
 //   ───────────────────────────────────────────────────────────────
 //   Usage (minimal):
 //     #include <APIOTA.h>
@@ -12,6 +12,8 @@
 //     }                                               // (library auto-logs over Serial)
 //     void loop() { APIOTA.tick(); }
 //   Optional: APIOTA.onCommand([](String c,String p,uint32_t id){ if(c=="reboot") ESP.restart(); });
+//   Optional: APIOTA.onConfig([](const String&){ int t = APIOTA.configGetInt("temp", 50); });
+//             (fires at boot + instantly whenever you press Save Config in the Dashboard)
 // ═══════════════════════════════════════════════════════════════════
 #pragma once
 
@@ -111,6 +113,7 @@ enum APIOTAExpiry : uint8_t {
 };
 
 using APIOTACommandCb     = std::function<void(const String& cmd, const String& payloadJson, uint32_t cmdId)>;
+using APIOTAConfigCb      = std::function<void(const String& configJson)>;
 using APIOTAProgressCb    = std::function<void(APIOTAState state, int pct, const char* msg)>;
 using APIOTAProvisionedCb = std::function<void(const String& deviceId, const String& deviceSecret)>;
 using APIOTAErrorCb       = std::function<void(const String& errorMsg)>;
@@ -155,6 +158,7 @@ public:
     if (!_pollTaskHandle) {
       xTaskCreatePinnedToCore(&APIOTAClient::_pollTaskTramp, "apiota_poll", 6144, this, 1, &_pollTaskHandle, 0);
     }
+    if (_cfgCb) fetchConfig();   // initial Device Config values at boot (1 Realtime call)
     return true;
   }
 
@@ -185,6 +189,7 @@ public:
   void enableAutoCheck(bool b)            { _autoCheck = b; }
 
   APIOTAClient& onCommand(APIOTACommandCb cb)         { _cmdCb  = cb; return *this; }
+  APIOTAClient& onConfig(APIOTAConfigCb cb)           { _cfgCb  = cb; if (_provisioned) fetchConfig(); return *this; }
   APIOTAClient& onProgress(APIOTAProgressCb cb)       { _progCb = cb; return *this; }
   APIOTAClient& onProvisioned(APIOTAProvisionedCb cb) { _provCb = cb; return *this; }
   APIOTAClient& onError(APIOTAErrorCb cb)             { _errCb  = cb; return *this; }
@@ -205,6 +210,34 @@ public:
   bool sendTelemetry(double lat, double lon, const String& dataJson) {
     return _sendTelemetry(dataJson, true, lat, lon);
   }
+
+  // ── Device Config (set in Dashboard → ⚙️ Device Config) ────────────
+  //   onConfig(cb) = cb gets the config JSON once at boot + every time you press
+  //   Save Config in the Dashboard (server pushes a config_update command — no
+  //   polling needed, idle long-poll is free). Read values with configGet*().
+  //   Each fetch = 1 Realtime call.
+  bool fetchConfig() {
+    if (!_provisioned || _deviceSecret.length() == 0) return false;
+    String resp;
+    int code = _httpGet("/api/device/config", resp);
+    if (code != 200) return false;
+    _configJson = _jobj(resp, "config");
+    if (_cfgCb) _cfgCb(_configJson);
+    return true;
+  }
+  String configGet(const char* key, const char* def = "") {
+    String v = _jget(_configJson, key);
+    return v.length() ? v : String(def);
+  }
+  int configGetInt(const char* key, int def = 0) {
+    String v = _jget(_configJson, key);
+    return v.length() ? v.toInt() : def;
+  }
+  float configGetFloat(const char* key, float def = 0) {
+    String v = _jget(_configJson, key);
+    return v.length() ? v.toFloat() : def;
+  }
+  const String& getConfigJson() const { return _configJson; }
 
   void tick() {
     if (!_provisioned) return;
@@ -389,6 +422,8 @@ private:
   Preferences _prefs;
 
   APIOTACommandCb     _cmdCb;
+  APIOTAConfigCb      _cfgCb;
+  String              _configJson = "{}";
   APIOTAProgressCb    _progCb;
   APIOTAProvisionedCb _provCb;
   APIOTAErrorCb       _errCb;
@@ -515,6 +550,33 @@ private:
     String resp;
     int code = _httpPost("/api/device/telemetry", body, resp);
     return code == 200;
+  }
+
+  // Extract a nested JSON object value as a substring (brace-depth aware, skips strings)
+  static String _jobj(const String& json, const char* key) {
+    String needle = String("\"") + key + "\":";
+    int i = json.indexOf(needle);
+    if (i < 0) return "{}";
+    int b = json.indexOf('{', i + needle.length());
+    if (b < 0) return "{}";
+    int depth = 0;
+    for (int e = b; e < (int)json.length(); e++) {
+      char c = json[e];
+      if (c == '"') {                       // skip string contents
+        e++;
+        while (e < (int)json.length() && json[e] != '"') {
+          if (json[e] == '\\') e++;
+          e++;
+        }
+        continue;
+      }
+      if (c == '{') depth++;
+      else if (c == '}') {
+        depth--;
+        if (depth == 0) return json.substring(b, e + 1);
+      }
+    }
+    return "{}";
   }
 
   static String _jget(const String& json, const char* key) {
@@ -773,6 +835,12 @@ private:
     }
     if (cmd == "check_update") {
       ackCommand(cmdId, "acked", "checking"); _lastCheckMs = 0; return;
+    }
+    if (cmd == "config_update") {
+      // Dashboard pressed Save Config → pull fresh values + fire onConfig
+      ackCommand(cmdId, "acked", "config");
+      fetchConfig();
+      return;
     }
     if (_cmdCb) {
       _cmdCb(cmd, payload, cmdId);

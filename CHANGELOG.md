@@ -4,6 +4,20 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-06-11
+
+### Added
+- **Device Config support** — read key-value settings set in the Dashboard (⚙️ Device Config):
+  - `APIOTA.onConfig(cb)` — callback fires once at boot and instantly every time you press
+    **Save Config** in the Dashboard (the server pushes a `config_update` command through the
+    idle long-poll, so no polling loop is needed).
+  - `APIOTA.configGet(key, def)` / `configGetInt(key, def)` / `configGetFloat(key, def)` —
+    read values from the cached config with defaults.
+  - `APIOTA.fetchConfig()` — manual refresh; `APIOTA.getConfigJson()` — raw cached JSON.
+- `config_update` is now a built-in command (handled automatically, like `reboot` / `check_update`).
+
+No breaking changes — existing sketches work unchanged.
+
 ## [1.2.3] - 2026-06-11
 
 ### Changed
