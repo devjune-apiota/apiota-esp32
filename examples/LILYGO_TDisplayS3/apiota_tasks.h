@@ -134,9 +134,22 @@ static void taskNetwork(void*) {
   // ── Steady state: tick() auto-checks OTA; BTN2/watchdog notify -> force check ──
   uint32_t lastStat = 0, lastTele = 0;
   sendTelemetryNow();                    // send the first values right after provision → Console shows data immediately
+  static bool s_waitScreen = false;   // v1.4.0: Approval/Lock gate — โชว์จอรอจนกว่า owner กด ✓ Approve / Unlock
   for (;;) {
     if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000)) > 0) APIOTA.forceCheck();
     APIOTA.tick();
+
+    // ── Approval / Lock gate (v1.4.0) — แจ้งบนจอ TFT ──
+    if (!APIOTA.isApproved() && !s_waitScreen) {
+      s_waitScreen = true;
+      showBlockedScreen("** WAITING APPROVAL **", "Owner approval required", "Dashboard > Devices > Approve", "(or device is locked)");
+    } else if (APIOTA.isApproved() && s_waitScreen) {
+      s_waitScreen = false;                                  // approve/unlock แล้ว → วาดจอปกติกลับ
+      ST_LOCK(); uint8_t ti = g_st.theme; ST_UNLOCK();
+      TFT_LOCK(); drawBase(ti); TFT_UNLOCK();
+      DisplayEvent ev = {}; ev.status = OTA_IDLE; ev.progress = -1; ev.refreshAll = true; postDisplayEvent(ev);
+      pushLog("device approved/unlocked - resuming");
+    }
     ST_LOCK(); g_st.forceCheck = false; g_st.wifiRssi = WiFi.RSSI();
              g_st.freeHeapKB = ESP.getFreeHeap() / 1024; g_st.uptimeMin = millis() / 60000; ST_UNLOCK();
     uint32_t now = millis();

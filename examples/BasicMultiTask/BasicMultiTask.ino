@@ -57,6 +57,13 @@ void setup() {
 // ── loop ─────────────────────────────────────────────────────────
 // Your application code — non-blocking, no delay()
 void loop() {
+  // ── Approval / Lock gate (v1.4.0) — OTA + command poll keep running in their task ──
+  if (!APIOTA.isApproved()) {
+    digitalWrite(STATUS_LED, (millis() / 150) % 2);   // fast blink = waiting for ✓ Approve / Unlock
+    vTaskDelay(pdMS_TO_TICKS(100));
+    return;                                           // application code does not run yet
+  }
+
   static uint32_t lastBlink = 0;
   static bool on = false;
 

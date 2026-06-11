@@ -4,6 +4,29 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-06-11
+
+### Added
+- **Approval / Lock gate** — `APIOTA.isApproved()` (alias `isReady()`): `false` while the device
+  is **pending ✓ Approve** or **Locked** from the Dashboard, `true` once approved/unlocked
+  (detected automatically via the command poll). Gate your `loop()` with it to hold the
+  application until the owner approves the device:
+  ```cpp
+  void loop() {
+    APIOTA.tick();
+    if (!APIOTA.isApproved()) { delay(100); return; }   // hold while pending / locked
+    // your application code
+  }
+  ```
+  All WiFi examples now demonstrate this: `BasicAPIOTA` / `BasicMultiTask` / `BasicWiFiPortal`
+  (fast-blink LED while waiting) and `LILYGO_TDisplayS3` (full-screen **WAITING APPROVAL**
+  notice on the TFT, restored automatically after approve/unlock).
+  `LILYGO_TSIM_A7670G` is standalone (does not use the library) — gate coming in a later patch.
+- **Device name sync** — `check-update` now reports the sketch's `DEVICE_NAME` (`&name=` query).
+  Change `DEVICE_NAME` in your sketch and reflash → the name shown in the Dashboard updates
+  automatically at boot and on the next OTA check. Older library versions simply don't send
+  the name (no breaking change).
+
 ## [1.3.1] - 2026-06-11
 
 ### Changed

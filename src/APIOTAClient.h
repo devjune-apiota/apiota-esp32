@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
 //   APIOTA Client — ESP32 OTA + Command + Provisioning Library
-//   v1.3.0  ·  apiota.net
+//   v1.4.0  ·  apiota.net
 //   ───────────────────────────────────────────────────────────────
 //   Usage (minimal):
 //     #include <APIOTA.h>
@@ -14,6 +14,9 @@
 //   Optional: APIOTA.onCommand([](String c,String p,uint32_t id){ if(c=="reboot") ESP.restart(); });
 //   Optional: APIOTA.onConfig([](const String&){ int t = APIOTA.configGetInt("temp", 50); });
 //             (fires at boot + instantly whenever you press Save Config in the Dashboard)
+//   Optional: gate your loop with APIOTA.isApproved() — hold the application while the
+//             device is pending ✓ Approve or locked from the Dashboard (v1.4.0):
+//             void loop(){ APIOTA.tick(); if(!APIOTA.isApproved()){ delay(100); return; } /* work */ }
 // ═══════════════════════════════════════════════════════════════════
 #pragma once
 
@@ -195,6 +198,14 @@ public:
   APIOTAClient& onError(APIOTAErrorCb cb)             { _errCb  = cb; return *this; }
   APIOTAClient& onExpired(APIOTAExpiredCb cb)         { _expCb  = cb; return *this; }
 
+  // ── Approval / Lock gate (v1.4.0) ─────────────────────────────────
+  //   isReady() = provisioned + approved (✓ Approve) + not locked.
+  //   Gate your loop() with this to hold the application until the owner
+  //   approves the device in the Dashboard (and pause it while locked):
+  //     if (!APIOTA.isReady()) { delay(100); return; }
+  //   Keep calling APIOTA.tick() before the gate so approval/unlock is detected.
+  bool          isReady() const         { return _provisioned && _devReady; }
+  bool          isApproved() const      { return isReady(); }   // alias — อ่านง่ายใน sketch
   bool          isProvisioned() const   { return _provisioned; }
   const String& getDeviceId() const     { return _deviceId; }
   const String& getDeviceSecret() const { return _deviceSecret; }
@@ -321,6 +332,8 @@ public:
     }
     _saveToNVS();
     _provisioned = true;
+    _devReady = (_jget(resp, "requires_approval") != "true");   // v1.4.0: pending → not ready until ✓ Approve
+    if (!_devReady) Serial.println("[APIOTA] waiting for owner approval (Dashboard -> Devices -> Approve)");
     if (_provCb) _provCb(_deviceId, _deviceSecret);
     _emitProgress(APST_IDLE, 100, "device provisioned");
     return true;
@@ -331,7 +344,7 @@ public:
     if (!_provisioned) return inf;
     _emitProgress(APST_CHECKING, 0, "checking update...");
     // B: send applied_seq → server decides from the rollout counter (flap-free deploy/rollback)
-    String path = "/api/device/check-update?version=" + _urlEncode(_fwVer) + "&seq=" + String(_appliedSeq);
+    String path = "/api/device/check-update?version=" + _urlEncode(_fwVer) + "&seq=" + String(_appliedSeq) + "&name=" + _urlEncode(_deviceName);   // v1.4.0: sync DEVICE_NAME to Dashboard
     String resp;
     int code = _httpGet(path, resp);
     if (code == 402) { _emitExpired(APEX_LIFT_TIME, _jget(resp, "error")); return inf; }
@@ -339,10 +352,13 @@ public:
       _emitExpired(APEX_WORKING, "working_expired"); return inf;
     }
     if (code == 403 && resp.indexOf("device_locked") >= 0) {
+      _devReady = false;
       if (!_blockedNotified) { _blockedNotified = true; if (_expCb) _expCb(APEX_BLOCKED, _jget(resp, "error")); }
       return inf;
     }
+    if (code == 403 && resp.indexOf("device_pending_approval") >= 0) { _devReady = false; return inf; }   // เงียบๆ รอ approve
     if (code != 200) { _emitError("checkUpdate HTTP " + String(code)); return inf; }
+    _devReady = true;
     inf.available  = (_jget(resp, "update") == "true");
     inf.rolloutSeq = (uint32_t)_jget(resp, "rollout_seq").toInt();   // B: this rollout's seq
     if (inf.available) {
@@ -408,6 +424,7 @@ private:
   bool _insecure   = false;
   bool _timeSynced = false;
   bool _provisioned      = false;
+  bool _devReady         = true;    // v1.4.0: false = pending approval หรือ locked — sketch gate ด้วย isReady()
   bool _autoCheck        = true;
   bool _pollEnabled      = false;
   bool _planLimitBlocked = false;
@@ -468,11 +485,13 @@ private:
 
   bool _validateRegistration() {
     if (WiFi.status() != WL_CONNECTED) return true;
-    String path = "/api/device/check-update?version=" + _urlEncode(_fwVer);
+    String path = "/api/device/check-update?version=" + _urlEncode(_fwVer) + "&name=" + _urlEncode(_deviceName);   // v1.4.0: name sync at boot
     String resp;
     int code = _httpGet(path, resp);
-    if (code == 200) return true;
+    if (code == 200) { _devReady = true; return true; }
     if (code == 402) return true;  // lift-time expired: registration valid -> surfaced via onExpired
+    if (code == 403 && resp.indexOf("device_pending_approval") >= 0) { _devReady = false; return true; }  // valid, waiting ✓ Approve
+    if (code == 403 && resp.indexOf("device_locked") >= 0)           { _devReady = false; return true; }  // valid, locked by owner
     if (code == 403 && _jget(resp, "error") == "working_expired") return true;  // working expired but valid
     if (code == 404 || code == 403) return false;  // genuinely rejected -> re-provision
     return true;
@@ -771,6 +790,7 @@ private:
       int code = _httpLongPoll("/api/device/poll", resp, 30000);
       if (code == 200) {
         authFailCount = 0;
+        _devReady = true;   // approved + unlocked (poll ผ่าน)
         if (_blockedNotified) { _blockedNotified = false; _emitProgress(APST_IDLE, 0, "device unlocked"); }
         uint32_t cmdId = (uint32_t)_jget(resp, "command_id").toInt();
         String cmd = _jget(resp, "command");
@@ -785,6 +805,7 @@ private:
         vTaskDelay(pdMS_TO_TICKS(_pollIdleMs));
       } else if (code == 204) {
         authFailCount = 0;
+        if (!_devReady) { _devReady = true; _emitProgress(APST_IDLE, 0, "device approved/ready"); }
         if (_blockedNotified) { _blockedNotified = false; _emitProgress(APST_IDLE, 0, "device unlocked"); }
         vTaskDelay(pdMS_TO_TICKS(100));
       } else if (code == 404) {
@@ -799,6 +820,7 @@ private:
       } else if (code == 403) {
         // 403 from owner-status (locked / pending approval) — don't clear NVS / re-provision
         if (resp.indexOf("device_locked") >= 0) {
+          _devReady = false;   // locked → sketch ที่ gate ด้วย isReady() จะหยุดรอ
           if (!_blockedNotified) {
             _blockedNotified = true;
             Serial.println("[APIOTA] device LOCKED by owner");
@@ -807,6 +829,7 @@ private:
           authFailCount = 0;
           vTaskDelay(pdMS_TO_TICKS(15000));   // wait for unlock, then recover automatically
         } else if (resp.indexOf("device_pending_approval") >= 0) {
+          _devReady = false;   // pending → รอ ✓ Approve
           authFailCount = 0;
           vTaskDelay(pdMS_TO_TICKS(15000));
         } else if (resp.indexOf("working_expired") >= 0) {

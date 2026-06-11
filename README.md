@@ -131,6 +131,14 @@ APIOTA.onConfig([](const String& json){
   String mode = APIOTA.configGet("mode", "auto");
 });
 APIOTA.fetchConfig();        // manual refresh (rarely needed) — 1 Realtime call
+
+// Approval / Lock gate (v1.4.0) — hold your application until the owner presses
+// ✓ Approve in the Dashboard, and pause it while the device is Locked
+void loop() {
+  APIOTA.tick();                                      // keeps detecting approve/unlock
+  if (!APIOTA.isApproved()) { delay(100); return; }   // pending or locked → wait
+  // your application code
+}
 ```
 
 `reboot`, `check_update` and `config_update` commands are handled by the library automatically.

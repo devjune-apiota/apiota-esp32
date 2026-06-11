@@ -51,8 +51,18 @@ void setup() {
 }
 
 void loop() {
-  APIOTA.tick();   // auto-check OTA on the configured interval
+  APIOTA.tick();   // keep OTA + command poll alive (also detects Approve / Unlock)
 
+  // ── Approval / Lock gate (v1.4.0) ────────────────────────────────
+  // hold the application until the owner presses ✓ Approve in the Dashboard,
+  // and pause it whenever the device is Locked — resumes automatically
+  if (!APIOTA.isApproved()) {
+    digitalWrite(STATUS_LED, (millis() / 150) % 2);   // fast blink = waiting
+    delay(100);
+    return;                                           // application code does not run yet
+  }
+
+  // ── your application code below ──────────────────────────────────
   // apply the live config value — LED blinks at the rate set in Device Config
   if (blinkMs > 0) {
     digitalWrite(STATUS_LED, (millis() / blinkMs) % 2);
