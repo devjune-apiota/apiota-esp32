@@ -4,15 +4,21 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.4.2] - 2026-06-23
+
+### Changed
+- `BasicAPIOTA`: simplified back to a true minimal example — WiFi + OTA + commands +
+  a one-line approval gate (`if (!APIOTA.isApproved()) { delay(500); return; }`).
+  The Device Config / blink_ms demo lives in the README and the Dashboard's code example.
+
+No library code changes — example only.
+
 ## [1.4.1] - 2026-06-11
 
 ### Changed
 - `LILYGO_TSIM_A7670G` (standalone) now supports the **Approval/Lock gate** (`g_devReady` +
   loop hold with fast-blink LED) and **device name sync** (new `DEVICE_NAME` define, sent
   with `check-update`) — same behaviour as the library-based examples in v1.4.0.
-- `BasicAPIOTA`: simplified back to a true minimal example — WiFi + OTA + commands +
-  a one-line approval gate (`if (!APIOTA.isApproved()) { delay(500); return; }`).
-  The Device Config / blink_ms demo lives in the README and the Dashboard's code example.
 
 ## [1.4.0] - 2026-06-11
 

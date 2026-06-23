@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Arduino Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run arduino-lint
+        uses: arduino/arduino-lint-action@v1
+        with:
+          project-type: library
+          library-manager: update
+          compliance: specification
+
+  compile:
+    name: Compile examples (ESP32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile examples
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp32:esp32:esp32
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          libraries: |
+            - source-path: ./
+            - name: WiFiManager
+          sketch-paths: |
+            - examples/BasicAPIOTA
+            - examples/BasicMultiTask
+            - examples/BasicWiFiPortal
+          enable-deltas-report: false
+          verbose: false
+# Note: LILYGO_TDisplayS3 (needs a board-specific TFT_eSPI User_Setup.h) and
+# LILYGO_TSIM_A7670G (standalone cellular sketch, not library-based) are intentionally
+# excluded from the compile matrix — they cannot build cleanly in a headless CI runner
+# without hardware-specific configuration. arduino-lint above still validates the whole repo.
