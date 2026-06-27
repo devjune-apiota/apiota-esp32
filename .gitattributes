@@ -1,0 +1,33 @@
+# APIOTA ESP32 library — line-ending normalization
+# Repo lives on Google Drive + Windows, so without this the working tree keeps
+# flipping to CRLF and shows phantom "modified" files. Force LF in the repo for
+# all text/source so checkouts stay clean on every machine.
+
+# Default: treat as text, normalize to LF on commit and checkout.
+* text=auto eol=lf
+
+# Source / sketches
+*.ino   text eol=lf
+*.h     text eol=lf
+*.hpp   text eol=lf
+*.c     text eol=lf
+*.cpp   text eol=lf
+
+# Repo metadata / docs
+*.md          text eol=lf
+*.txt         text eol=lf
+*.properties  text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.json        text eol=lf
+*.gitignore   text eol=lf
+LICENSE       text eol=lf
+
+# Binary assets — never touch
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.bin  binary
+*.pdf  binary
