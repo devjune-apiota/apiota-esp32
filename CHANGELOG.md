@@ -4,6 +4,22 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.4.3] - 2026-07-02
+
+### Fixed
+- Stripped stray NUL bytes that had crept in at the end of
+  `examples/LILYGO_TSIM_A7670G/LILYGO_TSIM_A7670G.ino` (harmless — the compiler ignored
+  them with a "null character(s) ignored" warning — but the file is clean now).
+
+### Changed
+- `keywords.txt` refreshed for the v1.3/v1.4 API so the Arduino IDE highlights it:
+  `onConfig` / `onExpired` / `configGet` / `configGetInt` / `configGetFloat` / `fetchConfig` /
+  `getConfigJson` / `isApproved` / `isReady` / `sendTelemetry` / `connectWiFi` / `setCACert` /
+  `setInsecure` / `bindOTA` / `handleCommand`, the `APIOTADisplay` / `APIOTAExpiry` types and
+  the `APEX_*` constants.
+
+No library code changes — existing sketches work unchanged.
+
 ## [1.4.2] - 2026-06-23
 
 ### Changed
