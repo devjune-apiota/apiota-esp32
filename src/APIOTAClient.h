@@ -142,20 +142,21 @@ public:
     _syncTime();   // needed before TLS cert validation (B-06)
 
     if (_deviceSecret.length() == 0) {
-      if (!autoProvision()) return false;
+      if (!autoProvision()) { _armProvisionRetry(); return false; }   // v1.4.4: tick() will keep retrying
     } else {
       _emitProgress(APST_PROVISIONING, 50, "verifying cached credentials...");
       if (!_validateRegistration()) {
         _emitProgress(APST_PROVISIONING, 70, "stale secret, re-provisioning...");
         _clearNVS();
         _deviceSecret = "";
-        if (!autoProvision()) return false;
+        if (!autoProvision()) { _armProvisionRetry(); return false; }   // v1.4.4: tick() will keep retrying
       } else {
         _emitProgress(APST_IDLE, 100, "credentials valid (cached)");
       }
     }
 
     _provisioned = true;
+    _provRetryArmed = false;   // v1.4.4: a later successful begin() (e.g. while(!begin) sketches) must disarm any stale retry state
     _pollEnabled = true;
 
     if (!_pollTaskHandle) {
@@ -251,7 +252,7 @@ public:
   const String& getConfigJson() const { return _configJson; }
 
   void tick() {
-    if (!_provisioned) return;
+    if (!_provisioned) { _provisionRetryTick(); return; }   // v1.4.4: self-heal instead of silent dead-end
     if (_autoCheck && _checkIntervalMs > 0) {
       uint32_t now = millis();
       if (now - _lastCheckMs >= _checkIntervalMs) {
@@ -433,6 +434,48 @@ private:
   uint32_t _pollIdleMs      = 1000;
   uint32_t _lastCheckMs = 0;
   uint32_t _lastTickMs  = 0;
+
+  // ── v1.4.4: self-heal when provisioning failed (slow WiFi / server briefly down) ──
+  // Without this a device whose first autoProvision() failed was permanently dead:
+  // begin() returned false, _provisioned stayed false, and tick() returned forever.
+  bool     _provRetryArmed   = false;
+  uint32_t _provRetryLastMs  = 0;
+  uint32_t _provRetryDelayMs = 30000;                 // 30s → x2 → 15min cap
+  static constexpr uint32_t _PROV_RETRY_MAX_MS = 15UL * 60UL * 1000UL;
+
+  void _armProvisionRetry() {
+    _provRetryArmed   = true;
+    _provRetryLastMs  = millis();
+    _provRetryDelayMs = _planLimitBlocked ? _PROV_RETRY_MAX_MS : 30000;   // plan-limit → straight to cap (matches _pollTask throttle)
+    Serial.printf("[APIOTA] provision failed - will retry in %lus (keep calling tick())\n",
+                  (unsigned long)(_provRetryDelayMs / 1000));
+  }
+
+  void _provisionRetryTick() {
+    if (!_provRetryArmed || _provisioned) return;
+    if (WiFi.status() != WL_CONNECTED) {              // same guard as _validateRegistration — don't burn the backoff while offline
+      _provRetryLastMs = millis();
+      _provRetryDelayMs = 30000;                      // fresh WiFi = fresh conditions → retry fast after reconnect
+      return;
+    }
+    uint32_t now = millis();
+    if (now - _provRetryLastMs < _provRetryDelayMs) return;
+    _provRetryLastMs = now;
+    _emitProgress(APST_PROVISIONING, 0, "retrying provision...");
+    if (autoProvision()) {                            // sets _provisioned + _devReady + NVS
+      _provRetryArmed   = false;
+      _provRetryDelayMs = 30000;
+      _planLimitBlocked = false;                      // slot freed / plan upgraded → let _pollTask out of its 60s sleep
+      _pollEnabled = true;                            // replicate begin()'s success tail
+      if (!_pollTaskHandle) {
+        xTaskCreatePinnedToCore(&APIOTAClient::_pollTaskTramp, "apiota_poll", 6144, this, 1, &_pollTaskHandle, 0);
+      }
+      if (_cfgCb) fetchConfig();
+    } else {
+      _provRetryDelayMs = (_planLimitBlocked || _provRetryDelayMs >= _PROV_RETRY_MAX_MS / 2)
+                            ? _PROV_RETRY_MAX_MS : _provRetryDelayMs * 2;
+    }
+  }
   uint32_t _cachedChipId = 0;
   APIOTAState _state = APST_IDLE;
   TaskHandle_t _pollTaskHandle = nullptr;
@@ -813,7 +856,7 @@ private:
         if (authFailCount >= 2) {
           _clearNVS(); _deviceSecret = ""; _provisioned = false;
           if (autoProvision()) { _provisioned = true; authFailCount = 0; }
-          else vTaskDelay(pdMS_TO_TICKS(30000));
+          else { _armProvisionRetry(); vTaskDelay(pdMS_TO_TICKS(30000)); }   // v1.4.4: hand off to tick() — poll loop's :781 gate never retries on its own
         } else {
           vTaskDelay(pdMS_TO_TICKS(5000));
         }
@@ -840,7 +883,7 @@ private:
           if (authFailCount >= 3) {
             _clearNVS(); _deviceSecret = ""; _provisioned = false;
             if (autoProvision()) { _provisioned = true; authFailCount = 0; }
-            else vTaskDelay(pdMS_TO_TICKS(60000));
+            else { _armProvisionRetry(); vTaskDelay(pdMS_TO_TICKS(60000)); }   // v1.4.4: hand off to tick()
           } else {
             vTaskDelay(pdMS_TO_TICKS(30000));
           }

@@ -4,6 +4,26 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [1.4.4] - 2026-07-20
+
+### Fixed
+- A device whose provisioning failed (WiFi slower than the connect timeout, or the
+  server briefly unreachable at boot) was permanently dead: `begin()` returned `false`
+  and `tick()` silently did nothing forever. `tick()` now retries auto-provisioning on
+  a 30s→15min backoff (fast-reset after a WiFi reconnect); on success the command poll
+  task and Device Config fetch start automatically — no reboot needed.
+- Same self-heal applies when the background poll task must re-provision (device
+  deleted from the dashboard, credentials revoked) and that one attempt fails —
+  previously the poll task never tried again until a power cycle.
+
+### Notes
+- No API changes — existing sketches work unchanged. Sketches that ignore `begin()`'s
+  return value and keep calling `tick()` in `loop()` (all Basic examples) get the retry
+  for free. While unprovisioned, each retry attempt runs synchronously inside `tick()`
+  and can block `loop()` for a few seconds (TLS + HTTP timeout); this only happens on a
+  device that would otherwise be dead. `onError`/`onProgress` callbacks may now fire on
+  each retry attempt rather than once at boot.
+
 ## [1.4.3] - 2026-07-02
 
 ### Fixed
