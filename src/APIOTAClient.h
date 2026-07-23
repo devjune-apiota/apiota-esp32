@@ -877,6 +877,16 @@ private:
           vTaskDelay(pdMS_TO_TICKS(15000));
         } else if (resp.indexOf("working_expired") >= 0) {
           _emitExpired(APEX_WORKING, "working_expired");
+        } else if (resp.indexOf("device_removed") >= 0) {
+          // v1.4.4: soft-deleted by owner — do NOT clearNVS/re-provision (server refuses to resurrect).
+          // Wait for owner to restore from dashboard; recover automatically like locked/pending.
+          _devReady = false; authFailCount = 0;
+          if (!_blockedNotified) {
+            _blockedNotified = true;
+            Serial.println("[APIOTA] device REMOVED by owner (restore from dashboard to recover)");
+            if (_expCb) _expCb(APEX_BLOCKED, "device_removed");
+          }
+          vTaskDelay(pdMS_TO_TICKS(30000));
         } else {
           // genuine 403 (invalid secret) → re-provision
           authFailCount++;

@@ -16,6 +16,11 @@ project uses [Semantic Versioning](https://semver.org/).
   deleted from the dashboard, credentials revoked) and that one attempt fails —
   previously the poll task never tried again until a power cycle.
 
+- When the owner removes a device from the dashboard, the device now backs off and waits
+  for restore instead of wiping NVS and re-registering (which used to silently reclaim the
+  freed plan slot). The server soft-deletes and returns a `device_removed` signal; the
+  device recovers automatically if the owner restores it, with no reflash.
+
 ### Notes
 - No API changes — existing sketches work unchanged. Sketches that ignore `begin()`'s
   return value and keep calling `tick()` in `loop()` (all Basic examples) get the retry
