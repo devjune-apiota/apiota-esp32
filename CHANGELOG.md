@@ -4,7 +4,7 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.4.5] - 2026-07-24
 
 ### Added
 - `LILYGO_TDisplayS3_Mini` example — the same on-screen UI as the full
