@@ -4,6 +4,17 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- A device stopped by the server (plan limit, working period or lifetime expired)
+  parked its poll task in a 60-second sleep forever — after the owner renewed or
+  upgraded the plan, the device stayed dead until a power cycle. The poll task now
+  sends one real poll roughly every 15 minutes as a probe; when the server accepts
+  again the device clears the block and resumes automatically ("plan restored").
+  Still-expired probes are rejected cheaply at the auth layer (402) and simply
+  re-arm the block, so the added server load is negligible.
+
 ## [1.4.4] - 2026-07-20
 
 ### Fixed

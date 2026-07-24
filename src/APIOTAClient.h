@@ -429,6 +429,7 @@ private:
   bool _autoCheck        = true;
   bool _pollEnabled      = false;
   bool _planLimitBlocked = false;
+  uint8_t _plimitSleeps  = 0;       // LIB-145: 60s sleeps since blocked — probe after 15
   bool _blockedNotified  = false;   // locked-by-owner notified (recover when unlocked)
   uint32_t _checkIntervalMs = 5UL * 60UL * 1000UL;
   uint32_t _pollIdleMs      = 1000;
@@ -465,7 +466,7 @@ private:
     if (autoProvision()) {                            // sets _provisioned + _devReady + NVS
       _provRetryArmed   = false;
       _provRetryDelayMs = 30000;
-      _planLimitBlocked = false;                      // slot freed / plan upgraded → let _pollTask out of its 60s sleep
+      _planLimitBlocked = false; _plimitSleeps = 0;   // slot freed / plan upgraded → let _pollTask out of its 60s sleep (LIB-145: เคลียร์คู่กันเสมอ)
       _pollEnabled = true;                            // replicate begin()'s success tail
       if (!_pollTaskHandle) {
         xTaskCreatePinnedToCore(&APIOTAClient::_pollTaskTramp, "apiota_poll", 6144, this, 1, &_pollTaskHandle, 0);
@@ -826,14 +827,18 @@ private:
         continue;
       }
       if (_planLimitBlocked) {
-        vTaskDelay(pdMS_TO_TICKS(60000));
-        continue;
+        // LIB-145 (v1.4.5): เดิม park 60s ตลอดกาล — เจ้าของต่ออายุ/อัปเกรดแผนแล้ว
+        // อุปกรณ์ไม่มีวันรู้จนกว่าจะถอดปลั๊ก · ตอนนี้ครบ ~15 นาที fall through ไป poll
+        // จริง 1 ครั้งเป็น probe — ยังหมดอายุอยู่ server ตอบ 402 ที่ deviceAuth → branch 402 re-park
+        if (++_plimitSleeps < 15) { vTaskDelay(pdMS_TO_TICKS(60000)); continue; }
+        _plimitSleeps = 0;
       }
       String resp;
       int code = _httpLongPoll("/api/device/poll", resp, 30000);
       if (code == 200) {
         authFailCount = 0;
         _devReady = true;   // approved + unlocked (poll ผ่าน)
+        if (_planLimitBlocked) { _planLimitBlocked = false; _plimitSleeps = 0; _emitProgress(APST_IDLE, 0, "plan restored"); }
         if (_blockedNotified) { _blockedNotified = false; _emitProgress(APST_IDLE, 0, "device unlocked"); }
         uint32_t cmdId = (uint32_t)_jget(resp, "command_id").toInt();
         String cmd = _jget(resp, "command");
@@ -849,13 +854,14 @@ private:
       } else if (code == 204) {
         authFailCount = 0;
         if (!_devReady) { _devReady = true; _emitProgress(APST_IDLE, 0, "device approved/ready"); }
+        if (_planLimitBlocked) { _planLimitBlocked = false; _plimitSleeps = 0; _emitProgress(APST_IDLE, 0, "plan restored"); }
         if (_blockedNotified) { _blockedNotified = false; _emitProgress(APST_IDLE, 0, "device unlocked"); }
         vTaskDelay(pdMS_TO_TICKS(100));
       } else if (code == 404) {
         authFailCount++;
         if (authFailCount >= 2) {
           _clearNVS(); _deviceSecret = ""; _provisioned = false;
-          if (autoProvision()) { _provisioned = true; authFailCount = 0; }
+          if (autoProvision()) { _provisioned = true; authFailCount = 0; _planLimitBlocked = false; _plimitSleeps = 0; }   // LIB-145: fresh provision = ไม่ blocked แน่ (server เพิ่งรับ) — อย่า re-park ฟรี ~15 นาที
           else { _armProvisionRetry(); vTaskDelay(pdMS_TO_TICKS(30000)); }   // v1.4.4: hand off to tick() — poll loop's :781 gate never retries on its own
         } else {
           vTaskDelay(pdMS_TO_TICKS(5000));
@@ -892,12 +898,18 @@ private:
           authFailCount++;
           if (authFailCount >= 3) {
             _clearNVS(); _deviceSecret = ""; _provisioned = false;
-            if (autoProvision()) { _provisioned = true; authFailCount = 0; }
+            if (autoProvision()) { _provisioned = true; authFailCount = 0; _planLimitBlocked = false; _plimitSleeps = 0; }   // LIB-145: fresh provision = ไม่ blocked แน่ (server เพิ่งรับ) — อย่า re-park ฟรี ~15 นาที
             else { _armProvisionRetry(); vTaskDelay(pdMS_TO_TICKS(60000)); }   // v1.4.4: hand off to tick()
           } else {
             vTaskDelay(pdMS_TO_TICKS(30000));
           }
         }
+      } else if (code == 402) {
+        // LIB-145: probe ยัง expired — server gate ที่ deviceAuth ตอบ 402 device_expired
+        // (ไม่ใช่ 403 working_expired — server ปัจจุบันไม่ส่ง string นั้นแล้ว) · re-park แบบตั้งใจ:
+        // กัน in-flight long-poll ที่ auth ก่อนหมดอายุคืน 200/204 มา clear flag แล้ว poll รัว 402
+        // · ไม่ fire callback ที่นี่ — checkUpdate 402 path ทำหน้าที่นั้นอยู่แล้ว
+        _planLimitBlocked = true; _plimitSleeps = 0; authFailCount = 0;
       } else {
         // code <= 0 = TLS didn't connect (often low heap when OTA-check/telemetry compete) → short backoff, quick recovery
         vTaskDelay(pdMS_TO_TICKS(2000));
