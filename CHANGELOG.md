@@ -17,7 +17,16 @@ project uses [Semantic Versioning](https://semver.org/).
   defines that are wrong for this board (its ST7789 is wired 8-bit parallel) —
   replaced with the actual 2-line fix: enable TFT_eSPI's bundled
   `Setup206_LilyGo_T_Display_S3.h` in `User_Setup_Select.h`. README now has a
-  step-by-step "black screen?" box (verified with TFT_eSPI 2.5.43).
+  step-by-step "black screen?" box (verified with TFT_eSPI 2.5.43). Both
+  T-Display-S3 examples now also carry an `#error` compile guard: building with
+  an unconfigured TFT_eSPI fails immediately with the 2-line fix in the error
+  message, instead of compiling fine and showing a black screen.
+- **"WAITING APPROVAL" / blocked screen was overpainted until unreadable.** While
+  a blocking notice (pending approval / locked) was on screen, the display task
+  kept repainting live stats over it every event and every 10 s. The example now
+  holds background repaints while a blocking screen is shown and redraws the full
+  UI automatically the moment the device is approved or unlocked — verified on
+  real hardware.
 - **T-Display-S3 dark screen on battery.** The example and `APIOTADisplay::begin()`
   now drive GPIO 15 (LCD power rail) HIGH — previously the screen only worked on
   USB power. Override with `#define APIOTADISP_PWR_EN -1` for other boards.
