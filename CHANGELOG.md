@@ -6,6 +6,12 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `LILYGO_TDisplayS3_Mini` example — the same on-screen UI as the full
+  T-Display-S3 example (TFT status + themes + WiFi portal + dashboard-controlled
+  LED/brightness/theme) in ~30 lines via the `APIOTADisplay` module. Customers
+  edit one API-key line; the 900-line example remains as the full-control reference.
+
 ### Fixed
 - **T-Display-S3 black screen out of the box.** The example header listed SPI pin
   defines that are wrong for this board (its ST7789 is wired 8-bit parallel) —
