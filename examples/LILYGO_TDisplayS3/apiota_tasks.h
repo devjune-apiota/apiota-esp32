@@ -54,11 +54,11 @@ static void taskDisplay(void*) {
     const Theme& T=THEMES[snap.theme];
     TFT_LOCK();
     if (got) {
-      if (ev.refreshAll){ drawBase(snap.theme); rAll(snap,snap.theme); }
-      else { rBadge(snap,T); rProgress(snap,T); rLog(snap,T); if(ev.refreshStats) rStats(snap,T); }
+      if (ev.refreshAll){ g_uiBlocked=false; drawBase(snap.theme); rAll(snap,snap.theme); }   // วาดเต็มจอ = ออกจากจอ blocked
+      else if (!g_uiBlocked) { rBadge(snap,T); rProgress(snap,T); rLog(snap,T); if(ev.refreshStats) rStats(snap,T); }
     }
     TickType_t now=xTaskGetTickCount();
-    if ((now-lastStat)>=SINT){ lastStat=now; rHeader(snap,T); rStats(snap,T); }
+    if ((now-lastStat)>=SINT){ lastStat=now; if (!g_uiBlocked){ rHeader(snap,T); rStats(snap,T); } }
     TFT_UNLOCK(); vTaskDelay(1);
   }
 }
@@ -73,7 +73,9 @@ static void taskNetwork(void*) {
   APIOTA.setCheckInterval(OTA_CHECK_INTERVAL_SEC);
 
   APIOTA.onProgress([](APIOTAState st, int pct, const char* msg) {
-    sendEv(mapApiotaState(st), pct, msg);
+    // recovery จาก blocked (approve/unlock/ต่ออายุแผน) → refreshAll วาดเต็มจอ ล้างจอ blocked ทิ้ง
+    bool recovered = msg && (strstr(msg,"plan restored") || strstr(msg,"device unlocked") || strstr(msg,"approved/ready"));
+    sendEv(mapApiotaState(st), pct, msg, nullptr, recovered, recovered);
   });
   APIOTA.onProvisioned([](const String& id, const String& sec) {
     strncpy(DEVICE_ID, id.c_str(), sizeof(DEVICE_ID) - 1); DEVICE_ID[sizeof(DEVICE_ID) - 1] = '\0';

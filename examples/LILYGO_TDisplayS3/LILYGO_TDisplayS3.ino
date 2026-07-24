@@ -35,6 +35,11 @@ using fs::FS;
 #include <Update.h>
 #include <Preferences.h>
 #include <TFT_eSPI.h>
+// ── Compile-time guard: หยุด build พร้อมบอกวิธีแก้ ถ้า TFT_eSPI ยังตั้งค่าจอไม่ตรงบอร์ดนี้
+//    (กันลูกค้าเจอ "จอมืด" เงียบ ๆ — คอมไพล์จะ error พร้อมขั้นตอน 2 บรรทัดแทน)
+#if !defined(ST7789_DRIVER) || !defined(TFT_PARALLEL_8_BIT)
+  #error "TFT_eSPI is NOT configured for LILYGO T-Display-S3! Fix (2 lines): open <Arduino libraries>/TFT_eSPI/User_Setup_Select.h -> comment out '#include <User_Setup.h>' -> uncomment '#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>' -> re-upload. See the APIOTA README for details."
+#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"

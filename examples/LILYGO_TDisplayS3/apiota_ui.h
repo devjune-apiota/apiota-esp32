@@ -176,8 +176,12 @@ static void sendEv(OTAStatus st,int pct,const char* msg,
 }
 
 // ── BLOCKED SCREEN ───────────────────────────────────────────────
+// g_uiBlocked: จอ blocked กำลังโชว์อยู่ — display task ห้ามวาด UI ปกติทับ (ไม่งั้นการ์ด/badge
+// ทาสีทับข้อความเตือนจนอ่านไม่ออก เหลือแต่กรอบแดง) · เคลียร์เมื่อมี event refreshAll (วาดเต็มจอ)
+static volatile bool g_uiBlocked = false;
 static void showBlockedScreen(const char* title,const char* line1,
                               const char* line2,const char* line3) {
+  g_uiBlocked = true;
   ST_LOCK(); uint8_t ti=g_st.theme; ST_UNLOCK();
   const Theme& T=THEMES[ti];
   TFT_LOCK();
