@@ -4,13 +4,13 @@
    For: LILYGO T-Display-S3 (ST7789, 320×170, ESP32-S3)
    ================================================================
 
-   TFT_eSPI User_Setup.h must be configured:
-     #define ST7789_DRIVER
-     #define TFT_WIDTH  170    #define TFT_HEIGHT 320
-     #define TFT_MOSI 11       #define TFT_SCLK 12
-     #define TFT_CS   10       #define TFT_DC    7
-     #define TFT_RST   5       #define TFT_BL   38
-     #define SPI_FREQUENCY 40000000
+   TFT_eSPI display setup — 2 lines, no pin typing needed:
+     Open  <Arduino libraries>/TFT_eSPI/User_Setup_Select.h  then
+       1) comment out:   #include <User_Setup.h>
+       2) uncomment:     #include <User_Setups/Setup206_LilyGo_T_Display_S3.h>
+     (this board is ST7789 320x170 over 8-BIT PARALLEL — the bundled
+      Setup206 has every pin correct; a black screen almost always means
+      the default User_Setup.h is still selected)
 
    Buttons:
      BTN1 (GPIO14) short  = change Theme
@@ -146,6 +146,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT); pinMode(BTN1_PIN, INPUT_PULLUP);
   pinMode(BTN2_PIN, INPUT_PULLUP); pinMode(TFT_BL_PIN, OUTPUT);
   digitalWrite(TFT_BL_PIN, HIGH);
+  pinMode(15, OUTPUT); digitalWrite(15, HIGH);   // T-Display-S3 LCD power rail (PWR_EN) — screen stays dark on battery without this
 
   g_stateMtx = xSemaphoreCreateMutex();
   g_tftMtx   = xSemaphoreCreateMutex();

@@ -66,8 +66,17 @@ Arduino **Library Manager**:
 | `LILYGO_TDisplayS3` | [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI), [WiFiManager](https://github.com/tzapu/WiFiManager) | on-screen UI + Wi-Fi captive portal |
 | `LILYGO_TSIM_A7670G` | [TinyGSM](https://github.com/vshymanskyy/TinyGSM) | OTA over a 4G/cellular modem |
 
-> **T-Display-S3:** configure `TFT_eSPI`'s `User_Setup` for the ST7789 8-bit parallel
-> panel. Pin to a known-good TFT_eSPI version for this board (newer versions can break the display).
+> **T-Display-S3 — black screen? 90% of the time it's this.** TFT_eSPI ships with a
+> default `User_Setup.h` for a *different* panel, so out of the box the screen shows
+> nothing. The fix is 2 lines — open
+> `<Arduino libraries>/TFT_eSPI/User_Setup_Select.h` and:
+> 1. comment out `#include <User_Setup.h>`
+> 2. uncomment `#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>`
+>
+> then re-upload. (The bundled Setup206 already has every pin correct for this
+> board's ST7789 320×170 8-bit-parallel panel — no manual pin defines needed.
+> Verified with TFT_eSPI 2.5.43.) Running on battery also needs GPIO 15 driven
+> HIGH (LCD power rail) — the example and `APIOTADisplay` do this for you.
 
 ---
 

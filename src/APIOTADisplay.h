@@ -20,7 +20,8 @@
 //     }
 //     void loop(){ APIOTA.tick(); DISP.tick(); }
 //
-//   Configure TFT_eSPI User_Setup.h for your board (ST7789 320x170, T-Display-S3 pins)
+//   TFT_eSPI setup: in User_Setup_Select.h comment <User_Setup.h> and uncomment
+//     <User_Setups/Setup206_LilyGo_T_Display_S3.h>  (ST7789 320x170, 8-bit parallel)
 //   Dependencies: TFT_eSPI · WiFiManager (tzapu) · APIOTA
 // ═══════════════════════════════════════════════════════════════════
 #pragma once
@@ -38,6 +39,9 @@
 // ── Pins (can be overridden before include) ───────────────────────
 #ifndef APIOTADISP_TFT_BL
   #define APIOTADISP_TFT_BL  38
+#endif
+#ifndef APIOTADISP_PWR_EN
+  #define APIOTADISP_PWR_EN  15   // T-Display-S3 LCD power rail — define as -1 to skip (other boards)
 #endif
 #ifndef APIOTADISP_LED
   #define APIOTADISP_LED      2
@@ -74,6 +78,9 @@ public:
     pinMode(APIOTADISP_BTN1, INPUT_PULLUP);
     pinMode(APIOTADISP_BTN2, INPUT_PULLUP);
     pinMode(APIOTADISP_TFT_BL, OUTPUT); digitalWrite(APIOTADISP_TFT_BL, HIGH);
+    #if APIOTADISP_PWR_EN >= 0
+      pinMode(APIOTADISP_PWR_EN, OUTPUT); digitalWrite(APIOTADISP_PWR_EN, HIGH);   // จอมืดตอนใช้แบตถ้าไม่จ่ายขานี้
+    #endif
 
     _stateMtx = xSemaphoreCreateMutex();
     _tftMtx   = xSemaphoreCreateMutex();

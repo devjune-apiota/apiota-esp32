@@ -7,6 +7,14 @@ project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **T-Display-S3 black screen out of the box.** The example header listed SPI pin
+  defines that are wrong for this board (its ST7789 is wired 8-bit parallel) —
+  replaced with the actual 2-line fix: enable TFT_eSPI's bundled
+  `Setup206_LilyGo_T_Display_S3.h` in `User_Setup_Select.h`. README now has a
+  step-by-step "black screen?" box (verified with TFT_eSPI 2.5.43).
+- **T-Display-S3 dark screen on battery.** The example and `APIOTADisplay::begin()`
+  now drive GPIO 15 (LCD power rail) HIGH — previously the screen only worked on
+  USB power. Override with `#define APIOTADISP_PWR_EN -1` for other boards.
 - A device stopped by the server (plan limit, working period or lifetime expired)
   parked its poll task in a 60-second sleep forever — after the owner renewed or
   upgraded the plan, the device stayed dead until a power cycle. The poll task now
