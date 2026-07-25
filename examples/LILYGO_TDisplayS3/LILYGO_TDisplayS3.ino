@@ -151,7 +151,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT); pinMode(BTN1_PIN, INPUT_PULLUP);
   pinMode(BTN2_PIN, INPUT_PULLUP); pinMode(TFT_BL_PIN, OUTPUT);
   digitalWrite(TFT_BL_PIN, HIGH);
-  pinMode(15, OUTPUT); digitalWrite(15, HIGH);   // T-Display-S3 LCD power rail (PWR_EN) — screen stays dark on battery without this
+  pinMode(15, OUTPUT); digitalWrite(15, HIGH);   // T-Display-S3 PWR_EN — enable the LCD power rail (as LILYGO's examples do)
 
   g_stateMtx = xSemaphoreCreateMutex();
   g_tftMtx   = xSemaphoreCreateMutex();

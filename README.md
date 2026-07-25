@@ -75,8 +75,9 @@ Arduino **Library Manager**:
 >
 > then re-upload. (The bundled Setup206 already has every pin correct for this
 > board's ST7789 320×170 8-bit-parallel panel — no manual pin defines needed.
-> Verified with TFT_eSPI 2.5.43.) Running on battery also needs GPIO 15 driven
-> HIGH (LCD power rail) — the example and `APIOTADisplay` do this for you.
+> Verified with TFT_eSPI 2.5.43.) The board's PWR_EN pin (GPIO 15) should also be
+> driven HIGH, as LILYGO's own examples do — the example and `APIOTADisplay`
+> handle this for you.
 
 ---
 

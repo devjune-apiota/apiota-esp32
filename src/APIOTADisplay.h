@@ -79,7 +79,7 @@ public:
     pinMode(APIOTADISP_BTN2, INPUT_PULLUP);
     pinMode(APIOTADISP_TFT_BL, OUTPUT); digitalWrite(APIOTADISP_TFT_BL, HIGH);
     #if APIOTADISP_PWR_EN >= 0
-      pinMode(APIOTADISP_PWR_EN, OUTPUT); digitalWrite(APIOTADISP_PWR_EN, HIGH);   // จอมืดตอนใช้แบตถ้าไม่จ่ายขานี้
+      pinMode(APIOTADISP_PWR_EN, OUTPUT); digitalWrite(APIOTADISP_PWR_EN, HIGH);   // enable the LCD power rail (PWR_EN), as LILYGO's examples do
     #endif
 
     _stateMtx = xSemaphoreCreateMutex();

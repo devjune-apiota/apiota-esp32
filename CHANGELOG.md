@@ -27,9 +27,10 @@ project uses [Semantic Versioning](https://semver.org/).
   holds background repaints while a blocking screen is shown and redraws the full
   UI automatically the moment the device is approved or unlocked — verified on
   real hardware.
-- **T-Display-S3 dark screen on battery.** The example and `APIOTADisplay::begin()`
-  now drive GPIO 15 (LCD power rail) HIGH — previously the screen only worked on
-  USB power. Override with `#define APIOTADISP_PWR_EN -1` for other boards.
+- **T-Display-S3 LCD power-enable pin now driven explicitly.** The example and
+  `APIOTADisplay::begin()` now drive GPIO 15 (the board's PWR_EN / LCD power
+  rail) HIGH at startup, as LILYGO's own examples do. Override with
+  `#define APIOTADISP_PWR_EN -1` for other boards.
 - A device stopped by the server (plan limit, working period or lifetime expired)
   parked its poll task in a 60-second sleep forever — after the owner renewed or
   upgraded the plan, the device stayed dead until a power cycle. The poll task now
