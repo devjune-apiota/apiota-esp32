@@ -3,6 +3,7 @@
 //  included by the main .ino after the global variables are declared
 // ================================================================
 #pragma once
+#include <Preferences.h>
 
 #define NVS_NAMESPACE "apiota-wifi"
 

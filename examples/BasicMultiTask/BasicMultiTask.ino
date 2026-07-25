@@ -1,12 +1,8 @@
 /*
   ================================================================
-   BasicMultiTask — APIOTA Library Example
-   ESP32 Dev Module (no display) — OTA with FreeRTOS multitasking
-   ────────────────────────────────────────────────
-   Same as BasicAPIOTA, but avoids delay(): OTA + command polling run
-   in their own FreeRTOS task, so loop() stays free for your own
-   application code (non-blocking, millis()-based).
-   add onCommand to receive led_on / led_off from the Dashboard
+   BasicMultiTask — OTA + commands in a FreeRTOS task
+   ESP32 Dev Module (no display)
+   Like BasicAPIOTA, but loop() stays free for your own code.
   ================================================================
 */
 #include <APIOTA.h>
@@ -22,12 +18,9 @@
 
 APIOTAClient APIOTA;
 
-// LED mode set by Dashboard commands, read by loop() (no delay needed)
 volatile int g_ledMode = 0;   // 0 = blink, 1 = on, 2 = off
 
-// ── OTA TASK ─────────────────────────────────────────────────────
-// Handles WiFi, provisioning, OTA and command polling on its own
-// core, so loop() never has to block.
+// WiFi + provisioning + OTA + command polling — runs on core 0
 void apiotaTask(void* pv) {
   APIOTA.setCheckInterval(OTA_CHECK_SEC);
   APIOTA.connectWiFi(WIFI_SSID, WIFI_PASSWORD);   // WiFi (helper in library)
@@ -41,7 +34,7 @@ void apiotaTask(void* pv) {
 
   for (;;) {
     APIOTA.tick();                     // check OTA on the configured interval
-    vTaskDelay(pdMS_TO_TICKS(1000));   // yields the CPU to other tasks (NOT a busy delay)
+    vTaskDelay(pdMS_TO_TICKS(1000));   // yield to other tasks
   }
 }
 
@@ -54,14 +47,12 @@ void setup() {
   xTaskCreatePinnedToCore(apiotaTask, "apiota_ota", 8192, NULL, 2, NULL, 0);
 }
 
-// ── loop ─────────────────────────────────────────────────────────
-// Your application code — non-blocking, no delay()
+// loop() = your application code — non-blocking, no delay()
 void loop() {
-  // ── Approval / Lock gate (v1.4.0) — OTA + command poll keep running in their task ──
-  if (!APIOTA.isApproved()) {
+  if (!APIOTA.isApproved()) {          // hold until ✓ Approve / Unlock (OTA + poll keep running)
     digitalWrite(STATUS_LED, (millis() / 150) % 2);   // fast blink = waiting for ✓ Approve / Unlock
     vTaskDelay(pdMS_TO_TICKS(100));
-    return;                                           // application code does not run yet
+    return;
   }
 
   static uint32_t lastBlink = 0;
@@ -71,11 +62,11 @@ void loop() {
     digitalWrite(STATUS_LED, HIGH);
   } else if (g_ledMode == 2) {
     digitalWrite(STATUS_LED, LOW);
-  } else if (millis() - lastBlink >= 500) {   // blink every 500ms without delay()
+  } else if (millis() - lastBlink >= 500) {   // blink every 500 ms
     lastBlink = millis();
     on = !on;
     digitalWrite(STATUS_LED, on);
   }
 
-  vTaskDelay(pdMS_TO_TICKS(10));   // small cooperative yield (not a blocking delay)
+  vTaskDelay(pdMS_TO_TICKS(10));   // cooperative yield
 }

@@ -1,62 +1,19 @@
 /*
   ================================================================
-   LILYGO_TDisplayS3 — APIOTA Library Example
-   For: LILYGO T-Display-S3 (ST7789, 320×170, ESP32-S3)
-   ================================================================
+   LILYGO_TDisplayS3 — APIOTA full-UI example
+   Board: LILYGO T-Display-S3 (ST7789 320x170, ESP32-S3)
+   Libs : APIOTA | TFT_eSPI | WiFiManager (tzapu)
+  ================================================================
+   Display setup (once): open <Arduino libraries>/TFT_eSPI/User_Setup_Select.h
+     1) comment out:  #include <User_Setup.h>
+     2) uncomment:    #include <User_Setups/Setup206_LilyGo_T_Display_S3.h>
 
-   TFT_eSPI display setup — 2 lines, no pin typing needed:
-     Open  <Arduino libraries>/TFT_eSPI/User_Setup_Select.h  then
-       1) comment out:   #include <User_Setup.h>
-       2) uncomment:     #include <User_Setups/Setup206_LilyGo_T_Display_S3.h>
-     (this board is ST7789 320x170 over 8-BIT PARALLEL — the bundled
-      Setup206 has every pin correct; a black screen almost always means
-      the default User_Setup.h is still selected)
+   Buttons:  BTN1 short = theme        BTN1 hold 5s = WiFi portal
+             BTN2 short = OTA check    BTN1+BTN2 5s = erase WiFi + restart
 
-   Buttons:
-     BTN1 (GPIO14) short  = change Theme
-     BTN1 (GPIO14) hold 5s = open WiFi Manager
-     BTN2 (GPIO0)  short  = Force OTA check
-     BTN1+BTN2 hold 5s    = erase all WiFi + restart
-
-   Dependencies:
-     - APIOTA library  |  TFT_eSPI  |  WiFiManager (tzapu)
+   Prefer ~30 lines instead of full control? See LILYGO_TDisplayS3_Mini.
   ================================================================
 */
-
-// ── INCLUDES ─────────────────────────────────────────────────────
-#include <FS.h>
-using fs::FS;
-#include "display_types.h"   // must be included first (OTAStatus, Theme, etc.)
-
-#include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <WiFiManager.h>
-#include <HTTPClient.h>
-#include <Update.h>
-#include <Preferences.h>
-#include <TFT_eSPI.h>
-// ── Compile-time guard: หยุด build พร้อมบอกวิธีแก้ ถ้า TFT_eSPI ยังตั้งค่าจอไม่ตรงบอร์ดนี้
-//    (กันลูกค้าเจอ "จอมืด" เงียบ ๆ — คอมไพล์จะ error พร้อมขั้นตอน 2 บรรทัดแทน)
-#if !defined(ST7789_DRIVER) || !defined(TFT_PARALLEL_8_BIT)
-  #error "TFT_eSPI is NOT configured for LILYGO T-Display-S3! Fix (2 lines): open <Arduino libraries>/TFT_eSPI/User_Setup_Select.h -> comment out '#include <User_Setup.h>' -> uncomment '#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>' -> re-upload. See the APIOTA README for details."
-#endif
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/base64.h"
-#include "mbedtls/md.h"
-#include "esp_ota_ops.h"
-#include "esp_system.h"
-#include <APIOTA.h>   // uses APIOTA_DEFAULT_PUBKEY from the library
-
-// ── PINS ─────────────────────────────────────────────────────────
-#define TFT_BL_PIN  38
-#define LED_PIN      2
-#define BTN1_PIN    14
-#define BTN2_PIN     0
 
 // ╔══════════════════════════════════════════════════════════════════╗
 //   USER CONFIG — edit only this section
@@ -65,20 +22,34 @@ using fs::FS;
 #define CURRENT_VERSION        "1.0.0"                 // bump on every new build
 #define OTA_SERVER             "https://apiota.net"
 
-// OTA check doesn't need to be frequent — commands arrive instantly via the separate long-poll (press BTN2 = force check)
-// too frequent (e.g. 15) makes TLS fight the poll for heap → commands stall. 60-300 is a good range
-#define OTA_CHECK_INTERVAL_SEC   60    // check OTA every ? seconds (300 = 5 min, recommended for production)
-#define TELEMETRY_INTERVAL_SEC   20    // send values to the 🖥 Console every ? seconds (0 = off) — avoid matching the OTA check interval
-#define MAX_WIFI_SLOTS           5     // max number of WiFi networks to remember
-#define WIFI_CONNECT_TIMEOUT_MS  20000 // max ms to wait when connecting to each SSID
-#define TFT_ROTATION             3     // 1=normal, 3=flipped 180°
+#define OTA_CHECK_INTERVAL_SEC   60    // seconds between OTA checks (commands arrive instantly anyway; BTN2 = force check)
+#define TELEMETRY_INTERVAL_SEC   20    // seconds between telemetry pushes to the Console (0 = off)
+#define MAX_WIFI_SLOTS           5     // WiFi networks to remember
+#define WIFI_CONNECT_TIMEOUT_MS  20000 // max ms per SSID when connecting
+#define TFT_ROTATION             3     // 1 = normal, 3 = flipped 180
 // ╚══════════════════════════════════════════════════════════════════╝
 
-// ── DISPLAY CONSTANTS ────────────────────────────────────────────
+// ── INCLUDES ─────────────────────────────────────────────────────
+#include "display_types.h"   // keep first (OTAStatus, Theme, ...)
+#include <WiFi.h>
+#include <WiFiManager.h>
+#include <TFT_eSPI.h>
+#if !defined(ST7789_DRIVER) || !defined(TFT_PARALLEL_8_BIT)   // wrong TFT_eSPI config = black screen -> fail the build with instructions
+  #error "TFT_eSPI is NOT configured for LILYGO T-Display-S3! Fix (2 lines): open <Arduino libraries>/TFT_eSPI/User_Setup_Select.h -> comment out '#include <User_Setup.h>' -> uncomment '#include <User_Setups/Setup206_LilyGo_T_Display_S3.h>' -> re-upload. See the APIOTA README for details."
+#endif
+#include <APIOTA.h>
+
+// ── PINS ─────────────────────────────────────────────────────────
+#define TFT_BL_PIN  38
+#define LED_PIN      2
+#define BTN1_PIN    14
+#define BTN2_PIN     0
+
+// ── DISPLAY ──────────────────────────────────────────────────────
 #define SCR_W  320
 #define SCR_H  170
 
-// ── GLOBAL OBJECTS & VARIABLES ───────────────────────────────────
+// ── GLOBALS ──────────────────────────────────────────────────────
 TFT_eSPI             tft = TFT_eSPI();
 static SemaphoreHandle_t g_stateMtx;
 static SemaphoreHandle_t g_tftMtx;
@@ -91,17 +62,14 @@ static volatile bool      g_planLimitBlocked = false;
 static char               DEVICE_ID[20]      = {0};
 static uint32_t           CHIP_ID_CACHED     = 0;
 
-// B-05: APIOTAClient handles provisioning, OTA, RSA/SHA verify, TLS-CA & command poll
 APIOTAClient APIOTA;
 
-// ── MACROS ───────────────────────────────────────────────────────
 #define ST_LOCK()    xSemaphoreTake(g_stateMtx, portMAX_DELAY)
 #define ST_UNLOCK()  xSemaphoreGive(g_stateMtx)
 #define TFT_LOCK()   xSemaphoreTake(g_tftMtx,   portMAX_DELAY)
 #define TFT_UNLOCK() xSemaphoreGive(g_tftMtx)
 #define DLY(ms)      vTaskDelay(pdMS_TO_TICKS(ms))
 
-// ── CHIP ID ──────────────────────────────────────────────────────
 static uint32_t calcChipId() {
   uint32_t id = 0;
   for (int i = 0; i < 17; i += 8) id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
@@ -112,7 +80,7 @@ static void deriveDeviceId() {
   snprintf(DEVICE_ID, sizeof(DEVICE_ID), "ESP32_%06X", (unsigned)CHIP_ID_CACHED);
 }
 
-// ── FORWARD DECLARATIONS ─────────────────────────────────────────
+// ── FORWARD DECLARATIONS (needed by the helper files below) ──────
 static void pushLog(const char* msg);
 static void sendEv(OTAStatus st, int pct, const char* msg,
                    const char* nv = nullptr, bool rs = false, bool ra = false);
@@ -133,10 +101,9 @@ static void wifiClearAll();
 static void wifiAdd(const char* ssid, const char* pass);
 static String jget(const String& js, const char* key);
 
-// ── HELPER FILES (included after global declarations) ───────────
-#include "apiota_ui.h"     // Themes + drawing functions + pushLog + sendEv
-#include "apiota_wifi.h"   // WifiCred struct + wifi functions
-#include "apiota_tasks.h"  // OTA functions + FreeRTOS tasks
+#include "apiota_ui.h"     // themes + drawing
+#include "apiota_wifi.h"   // saved-WiFi list + portal
+#include "apiota_tasks.h"  // OTA + FreeRTOS tasks
 
 // ================================================================
 //  SETUP
@@ -151,7 +118,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT); pinMode(BTN1_PIN, INPUT_PULLUP);
   pinMode(BTN2_PIN, INPUT_PULLUP); pinMode(TFT_BL_PIN, OUTPUT);
   digitalWrite(TFT_BL_PIN, HIGH);
-  pinMode(15, OUTPUT); digitalWrite(15, HIGH);   // T-Display-S3 PWR_EN — enable the LCD power rail (as LILYGO's examples do)
+  pinMode(15, OUTPUT); digitalWrite(15, HIGH);   // T-Display-S3 PWR_EN (LCD power rail)
 
   g_stateMtx = xSemaphoreCreateMutex();
   g_tftMtx   = xSemaphoreCreateMutex();
@@ -165,7 +132,7 @@ void setup() {
   tft.setViewport(0, 0, SCR_W, SCR_H); tft.setTextFont(1); tft.setTextSize(1);
   drawBase(0);
 
-  // Boot splash
+  // boot splash
   const Theme& T = THEMES[0];
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(T.accent, T.bg); tft.setTextSize(2); tft.drawString("APIOTA", SCR_W / 2, SCR_H / 2 - 16);
@@ -174,7 +141,7 @@ void setup() {
   tft.drawString(DEVICE_ID, SCR_W / 2, SCR_H / 2 + 14);
   delay(1500);
 
-  // WiFi boot sequence
+  // WiFi: saved networks first, captive portal if none work
   drawBase(0); wifiLoadAll();
   char bootMsg[48]; snprintf(bootMsg, sizeof(bootMsg), "%d saved WiFi found", g_wifiCount);
   pushLog(bootMsg);
@@ -204,7 +171,6 @@ void setup() {
   ST_LOCK(); g_st.wifiRssi = WiFi.RSSI(); g_st.freeHeapKB = ESP.getFreeHeap() / 1024; ST_UNLOCK();
   pushLog(("IP: " + WiFi.localIP().toString()).c_str());
 
-  // Spawn FreeRTOS tasks
   xTaskCreatePinnedToCore(taskDisplay,  "disp", 6144, nullptr, 3, nullptr,    1);
   xTaskCreatePinnedToCore(taskNetwork,  "net",  16384, nullptr, 2, &g_netTask, 0);
   xTaskCreatePinnedToCore(taskButton,   "btn",  8192, nullptr, 4, nullptr,    1);
@@ -216,7 +182,6 @@ void setup() {
   Serial.println("=== APIOTA Display started ===");
 }
 
-// ── loop ─────────────────────────────────────────────────────────
 void loop() {
-  vTaskDelay(portMAX_DELAY);  // all work runs in FreeRTOS tasks — loop has nothing to do
+  vTaskDelay(portMAX_DELAY);  // everything runs in FreeRTOS tasks
 }

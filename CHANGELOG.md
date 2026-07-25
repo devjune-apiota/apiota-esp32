@@ -4,6 +4,13 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- All examples tidied for readability: USER CONFIG moved to the top of each
+  sketch, unused includes removed, comments trimmed. No behavior changes —
+  every example compile-verified.
+
 ## [1.4.5] - 2026-07-24
 
 ### Added

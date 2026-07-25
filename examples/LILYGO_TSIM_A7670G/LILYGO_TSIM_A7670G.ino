@@ -33,6 +33,24 @@
 // ╚══════════════════════════════════════════════════════════════╝
 #define DEBUG_MODE  1
 
+// ╔══════════════════════════════════════════════════════════════════╗
+//   USER CONFIG — edit only this section
+// ╠══════════════════════════════════════════════════════════════════╣
+#define API_KEY           "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
+#define CURRENT_VERSION   "1.0.0"                // bump on every new build
+#define DEVICE_NAME       "TSIM_A7670G"          // shown in Dashboard → Devices
+#define OTA_SERVER        "apiota.net"
+#define OTA_SERVER_PORT   443                    // HTTPS
+
+// ── APN per your network operator ──
+#define APN               "www.dtac.co.th" // DTAC (per SIM) | alt: www.dtac.net | AIS="internet" | TRUE="internet.true.th"
+#define GPRS_USER         ""
+#define GPRS_PASS         ""
+
+#define OTA_CHECK_SEC     300   // check OTA every 5 minutes
+#define TELEMETRY_SEC     10    // send values to the server (Monitor) every 10s — GPS/battery/etc.
+// ╚══════════════════════════════════════════════════════════════════╝
+
 // ── MODEM SELECTION ─────────────────────────────────────────────
 #define TINY_GSM_MODEM_A7672X   // A7670G: uses the A7672X driver (has TinyGsmClientSecure)
 #define TINY_GSM_YIELD_MS  1    // driver yields 1ms while waiting for AT → prevents Task Watchdog reset during SSL read
@@ -63,23 +81,6 @@
 #define LOG(...)      Serial.printf(__VA_ARGS__)
 #define LOGLN(x)      Serial.println(x)
 
-// ╔══════════════════════════════════════════════════════════════════╗
-//   USER CONFIG — edit only this section
-// ╠══════════════════════════════════════════════════════════════════╣
-#define API_KEY           "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
-#define CURRENT_VERSION   "1.0.0"                // bump on every new build
-#define DEVICE_NAME       "TSIM_A7670G"          // shown in Dashboard → Devices (syncs on reflash, v1.4.1)
-#define OTA_SERVER        "apiota.net"
-#define OTA_SERVER_PORT   443                    // HTTPS
-
-// ── APN per your network operator ──
-#define APN               "www.dtac.co.th" // DTAC (per SIM) | alt: www.dtac.net | AIS="internet" | TRUE="internet.true.th"
-#define GPRS_USER         ""
-#define GPRS_PASS         ""
-
-#define OTA_CHECK_SEC     300   // check OTA every 5 minutes
-#define TELEMETRY_SEC     10    // send values to the server (Monitor) every 10s — GPS/battery/etc.
-// ╚══════════════════════════════════════════════════════════════════╝
 
 // ── PIN CONFIG (LILYGO T-A7670, ESP32-WROVER-E) ──────────────────
 #define MODEM_RX_PIN      27   // ESP RX ← modem TX

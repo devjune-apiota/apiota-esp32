@@ -2,7 +2,6 @@
   ================================================================
    BasicAPIOTA — minimal APIOTA example
    WiFi + auto-provision + OTA + commands, all inside the library
-   (logs every step over Serial)
   ================================================================
 */
 #include <APIOTA.h>
@@ -25,7 +24,7 @@ void setup() {
   APIOTA.setCheckInterval(OTA_CHECK_SEC);
   APIOTA.connectWiFi(WIFI_SSID, WIFI_PASSWORD);   // WiFi (helper in library)
 
-  // commands from Dashboard / Telegram (reboot & check_update handled by the library)
+  // commands from the Dashboard (reboot & check_update are built-in)
   APIOTA.onCommand([](const String& cmd, const String& payload, uint32_t id){
     if (cmd == "led_on")  digitalWrite(STATUS_LED, HIGH);
     if (cmd == "led_off") digitalWrite(STATUS_LED, LOW);

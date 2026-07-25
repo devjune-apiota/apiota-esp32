@@ -3,11 +3,10 @@
 //  included by the main .ino after the global variables are declared
 // ================================================================
 #pragma once
+#include "esp_ota_ops.h"
 
-// ── APIOTA LIBRARY GLUE (B-05: migrated from raw HTTP to APIOTAClient) ──
-//  Network / OTA / provisioning are now handled by the APIOTAClient library
-//  (RSA verify, SHA-256, TLS-CA, NVS secret cache, command long-poll).
-//  This file only maps library callbacks onto the existing TFT UI.
+// The APIOTAClient library handles network / OTA / provisioning —
+// this file only maps its callbacks onto the TFT UI.
 
 // Map library state enum -> display OTAStatus enum
 static OTAStatus mapApiotaState(APIOTAState s) {
