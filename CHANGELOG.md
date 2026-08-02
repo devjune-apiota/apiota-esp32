@@ -6,7 +6,28 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **T-SIM A7670G example: remote commands (⚡Cmd) over cellular.** The 4G
+  example now fetches queued Dashboard commands — `reboot` / `check_update`
+  are built in, and a `handleCommand()` hook in the sketch handles your own
+  (`led_on` / `led_off` ship as samples). Results are acknowledged back to the
+  Dashboard. Verified end-to-end on real hardware over LTE.
+- **T-SIM A7670G example: external L76K GPS support.** Board variants carrying
+  the separate L76K GNSS chip are detected automatically — position cards
+  (lat/lon/alt/speed/sats + a map card) attach to telemetry once there is a
+  fix, and a `GPS` struct is readable from `loop()` for your own logic
+  (geofencing etc.). Modem-GNSS variants keep working as before.
+
 ### Changed
+- **T-SIM A7670G example restructured around one editable page.** The sketch
+  now holds only what users touch — USER CONFIG, telemetry cards, GPS cards,
+  command handlers and `loop()` — while the modem/LTE/OTA engine lives in
+  `apiota_4g.h` (same folder, never needs editing). Telemetry rounds are ~3x
+  faster (only the response verdict is read over the modem), quiet mode
+  (`DEBUG_MODE 0`, now the default) reports every send and every received
+  command in the Serial Monitor, and a periodic "waiting for ✓ Approve"
+  reminder shows while the device is pending. Compile-verified in every
+  toggle combination.
 - All examples tidied for readability: USER CONFIG moved to the top of each
   sketch, unused includes removed, comments trimmed. No behavior changes —
   every example compile-verified.
