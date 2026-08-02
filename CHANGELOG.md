@@ -4,7 +4,7 @@ All notable changes to the APIOTA ESP32 library are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.4.6] - 2026-08-03
 
 ### Fixed
 - **T-Display-S3: red frame remnants left on screen after ✓ Approve.** Resuming from a
