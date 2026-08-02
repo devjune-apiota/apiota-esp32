@@ -68,6 +68,9 @@ static void taskNetwork(void*) {
   pushLog("firmware marked valid");
 
   // ── Configure APIOTA client ────────────────────────────────────
+#ifndef OTA_SERVER
+#define OTA_SERVER "https://apiota.net"   // self-hosters: #define in the sketch USER CONFIG
+#endif
   APIOTA.setServer(OTA_SERVER);
   APIOTA.setCheckInterval(OTA_CHECK_INTERVAL_SEC);
 
@@ -126,7 +129,7 @@ static void taskNetwork(void*) {
 
   // ── Wait for WiFi, then provision/validate (library caches secret in NVS) ──
   while (WiFi.status() != WL_CONNECTED) { pushLog("waiting WiFi for provision..."); DLY(2000); }
-  while (!APIOTA.begin(API_KEY, CURRENT_VERSION, DEVICE_ID)) {
+  while (!APIOTA.begin(API_KEY, CURRENT_VERSION, DEVICE_NAME)) {   // DEVICE_NAME from USER CONFIG (syncs on reflash)
     if (g_planLimitBlocked) { pushLog("BLOCKED: waiting 5min..."); DLY(300000); g_planLimitBlocked = false; }
     else                    { pushLog("provision failed, retry 30s..."); DLY(30000); }
     while (WiFi.status() != WL_CONNECTED) DLY(1000);

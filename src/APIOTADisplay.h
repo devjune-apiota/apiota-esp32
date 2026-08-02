@@ -243,7 +243,9 @@ private:
   }
 
   void _onProgress(APIOTAState st, int pct, const char* msg) {
-    if (msg && strstr(msg, "unlocked")) { _sendEv(st, pct, msg, true, true); return; }  // unlock -> full screen redraw
+    // resume from a blocked screen (✓ Approve / Unlock / plan renewed) -> full-screen redraw,
+    // otherwise the blocked screen's red frame + text survive in the gaps between UI cards
+    if (msg && (strstr(msg,"unlocked") || strstr(msg,"approved/ready") || strstr(msg,"plan restored"))) { _sendEv(st, pct, msg, true, true); return; }
     if (st == APST_CHECKING && msg && strstr(msg, "new version")) {
       // capture target version for the badge
       _stLock(); const char* v = strrchr(msg, ' '); if (v) { strncpy(_st.newVer, v+1, 15); _st.newVer[15]='\0'; } _stUnlock();

@@ -36,8 +36,6 @@
 #define API_KEY           "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // from apiota.net Dashboard
 #define CURRENT_VERSION   "1.0.0"                // bump on every new build
 #define DEVICE_NAME       "TSIM_A7670G"          // shown in Dashboard → Devices
-#define OTA_SERVER        "apiota.net"
-#define OTA_SERVER_PORT   443                    // HTTPS
 
 // APN of your SIM — TH: AIS="internet" | DTAC="www.dtac.co.th" | TRUE="internet.true.th"
 #define APN               "internet"

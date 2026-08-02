@@ -26,6 +26,10 @@
 #ifndef SEND_GPS
 #define SEND_GPS 1   // sketches without the toggle keep GPS on
 #endif
+#ifndef OTA_SERVER   // self-hosters: #define both in the sketch before the include
+#define OTA_SERVER      "apiota.net"
+#define OTA_SERVER_PORT 443
+#endif
 
 // ── MODEM SELECTION ─────────────────────────────────────────────
 #define TINY_GSM_MODEM_A7672X   // A7670G: uses the A7672X driver (has TinyGsmClientSecure)

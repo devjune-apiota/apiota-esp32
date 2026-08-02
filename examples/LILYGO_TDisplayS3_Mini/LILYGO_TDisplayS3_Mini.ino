@@ -23,10 +23,11 @@
 #endif
 
 // ╔════════════════════════════════════════════════════════════╗
-//   USER CONFIG — edit only these two lines
+//   USER CONFIG — edit only these three lines
 // ╠════════════════════════════════════════════════════════════╣
 #define API_KEY          "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   // from apiota.net Dashboard
 #define CURRENT_VERSION  "1.0.0"                                                  // bump on every new build
+#define DEVICE_NAME      "TDisplayS3_Mini"                                        // shown in Dashboard → Devices
 // ╚════════════════════════════════════════════════════════════╝
 
 APIOTAClient  APIOTA;
@@ -39,7 +40,7 @@ void setup() {
   APIOTA.onCommand([](const String& c, const String& p, uint32_t id) {
     DISP.handleCommand(c, p);           // led_on/led_off/set_led/set_brightness/theme
   });
-  APIOTA.begin(API_KEY, CURRENT_VERSION);
+  APIOTA.begin(API_KEY, CURRENT_VERSION, DEVICE_NAME);
   DISP.setDeviceId(APIOTA.getDeviceId().c_str());
 }
 

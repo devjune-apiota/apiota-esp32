@@ -6,6 +6,14 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **T-Display-S3: red frame remnants left on screen after ✓ Approve.** Resuming from a
+  blocked screen via owner approval (or plan renewal) only repainted the UI
+  components, leaving the notice's red frame and text visible in the gaps —
+  `APIOTADisplay` now does a full-screen redraw for every resume path
+  (approve / unlock / plan restored), matching the full example. Verified on
+  real hardware.
+
 ### Added
 - **T-SIM A7670G example: remote commands (⚡Cmd) over cellular.** The 4G
   example now fetches queued Dashboard commands — `reboot` / `check_update`
@@ -19,6 +27,10 @@ project uses [Semantic Versioning](https://semver.org/).
   (geofencing etc.). Modem-GNSS variants keep working as before.
 
 ### Changed
+- **All examples: one-page USER CONFIG.** Every sketch now carries `DEVICE_NAME`
+  in USER CONFIG (T-Display full + Mini included), and values users never edit —
+  the server address, WiFi slot count, connect timeout — moved into the engine
+  headers with `#ifndef` overrides for self-hosters.
 - **T-SIM A7670G example restructured around one editable page.** The sketch
   now holds only what users touch — USER CONFIG, telemetry cards, GPS cards,
   command handlers and `loop()` — while the modem/LTE/OTA engine lives in

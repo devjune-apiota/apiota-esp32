@@ -6,6 +6,12 @@
 #include <Preferences.h>
 
 #define NVS_NAMESPACE "apiota-wifi"
+#ifndef MAX_WIFI_SLOTS
+#define MAX_WIFI_SLOTS          5      // WiFi networks to remember (override in the sketch if needed)
+#endif
+#ifndef WIFI_CONNECT_TIMEOUT_MS
+#define WIFI_CONNECT_TIMEOUT_MS 20000  // max ms per SSID when connecting
+#endif
 
 struct WifiCred {
   char ssid[33];

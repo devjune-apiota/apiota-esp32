@@ -19,13 +19,11 @@
 //   USER CONFIG — edit only this section
 // ╠══════════════════════════════════════════════════════════════════╣
 #define API_KEY                "ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   // from apiota.net Dashboard
-#define CURRENT_VERSION        "1.0.0"                 // bump on every new build
-#define OTA_SERVER             "https://apiota.net"
+#define CURRENT_VERSION        "1.0.0"           // bump on every new build
+#define DEVICE_NAME            "TDisplayS3"      // shown in Dashboard → Devices
 
 #define OTA_CHECK_INTERVAL_SEC   60    // seconds between OTA checks (commands arrive instantly anyway; BTN2 = force check)
 #define TELEMETRY_INTERVAL_SEC   20    // seconds between telemetry pushes to the Console (0 = off)
-#define MAX_WIFI_SLOTS           5     // WiFi networks to remember
-#define WIFI_CONNECT_TIMEOUT_MS  20000 // max ms per SSID when connecting
 #define TFT_ROTATION             3     // 1 = normal, 3 = flipped 180
 // ╚══════════════════════════════════════════════════════════════════╝
 
