@@ -20,6 +20,10 @@
      - TinyGSM (vshymanskyy) — v0.12.0+ supports A7670
 
    Notes:
+     - "[HTTP] connect failed" every time on some A76xx firmwares (e.g.
+       A7670G-LLSE): TinyGSM 0.12.0 aborts the TLS connect when the optional
+       AT+CTCPKA errors. 1-line fix in TinyGsmClientA7672x.h — see the
+       APIOTA README ("T-SIM A7670G known issue").
      - A7670G supports native SSL/TLS → use TinyGsmClientSecure directly
      - LTE Cat-1: downloads firmware ~10x faster than SIM800L GPRS
      - no special voltage concerns (board has a complete power circuit)

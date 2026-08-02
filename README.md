@@ -115,7 +115,19 @@ Point the library at your own backend before including it:
 | **BasicMultiTask** | any ESP32 | — | OTA in a FreeRTOS task — no `delay()`, `loop()` stays free |
 | **BasicWiFiPortal** | any ESP32 | — | multitasking OTA + WiFiManager captive portal (no hardcoded Wi-Fi) |
 | **LILYGO_TDisplayS3** | LILYGO T-Display-S3 | yes | full on-screen UI, Wi-Fi portal, status screens |
+| **LILYGO_TDisplayS3_Mini** | LILYGO T-Display-S3 | yes | the same on-screen UI in ~30 lines via `APIOTADisplay` |
 | **LILYGO_TSIM_A7670G** | LILYGO T-SIM A7670G | — | OTA over 4G cellular |
+
+> **T-SIM A7670G known issue — `[HTTP] connect failed` on every attempt
+> (TinyGSM 0.12.0, incl. current master):** some A76xx modem firmwares (seen on
+> A7670G-LLSE) reject the optional keep-alive command `AT+CTCPKA`, and the
+> TinyGSM driver aborts the whole TLS connect on that error. Fix (1 line): open
+> `<Arduino libraries>/TinyGSM/src/TinyGsmClientA7672x.h`, find
+> `sendAT(GF("+CTCPKA=1,2,5,1"));` and replace the line below it —
+> `if (waitResponse(2000L) != 1) { return false; }` — with just
+> `waitResponse(2000L);` then re-upload. Verified on real hardware.
+> (A7670G-**LLSE** also has no built-in GNSS — the `AT+CGNSSPWR` ERROR is
+> expected and harmless; telemetry simply sends without GPS.)
 
 ---
 
